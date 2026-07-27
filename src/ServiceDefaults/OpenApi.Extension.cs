@@ -35,6 +35,11 @@ namespace ServiceDefaults
                     // Disable default fonts to avoid download unnecessary fonts
                     options.DefaultFonts = false;
 
+                    options.AddAuthorizationCodeFlow("oauth2", flow =>
+                    {
+                        flow.ClientId = configuration["Identity:ClientId"];
+                    });
+
                     foreach (var description in descriptions)
                     {
                         options.AddDocument(description.GroupName, description.GroupName, isDefault: description.GroupName == defaultDocument);

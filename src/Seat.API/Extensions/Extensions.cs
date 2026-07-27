@@ -1,3 +1,6 @@
+using Microsoft.AspNetCore.Authorization;
+using ServiceDefaults.Authorization;
+
 namespace Seat.API.Extensions;
 
 public static class Extensions

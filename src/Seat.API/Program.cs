@@ -25,6 +25,8 @@ app.MapSeatApi();
 
 app.UseDefaultOpenApi();
 
+
+
 app.MapGrpcService<SeatService>();
 
 app.Run();

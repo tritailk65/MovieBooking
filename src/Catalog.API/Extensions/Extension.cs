@@ -1,4 +1,6 @@
 ﻿using IntegrationEventLogEF.Services;
+using Microsoft.AspNetCore.Authorization;
+using ServiceDefaults.Authorization;
 
 namespace Catalog.API.Extensions
 {
@@ -7,8 +9,10 @@ namespace Catalog.API.Extensions
         public static void AddApplicationServices(this IHostApplicationBuilder builder)
         {
             builder.AddDefaultAuthentication();
-            builder.Services.AddCatalogAuthorization();
 
+            builder.Services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
+            builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
+            
             // Avoid loading full database config and migrations if startup
             // is being invoked from build-time OpenAPI generation
             if (builder.Environment.IsBuild())

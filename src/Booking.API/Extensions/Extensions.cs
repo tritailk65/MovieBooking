@@ -1,4 +1,6 @@
 using BookingService.API.Application.IntegrationEvents.EventHandling;
+using Microsoft.AspNetCore.Authorization;
+using ServiceDefaults.Authorization;
 
 namespace BookingService.API.Extensions;
 
@@ -7,6 +9,12 @@ public static class Extensions
     public static void AddApplicationServices(this IHostApplicationBuilder builder)
     {
         var services = builder.Services;
+
+        builder.AddDefaultAuthentication();
+
+        services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
+        services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
+            
 
         services.AddDbContext<BookingContext>(options =>
         {

@@ -52,7 +52,7 @@ namespace ServiceDefaults
                 options.TokenValidationParameters.ValidIssuers = [identityUrl];
 #endif
 
-                options.TokenValidationParameters.ValidateAudience = true;
+                options.TokenValidationParameters.ValidateAudience = false;
             });
 
             services.AddAuthorization();

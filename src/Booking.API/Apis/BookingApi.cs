@@ -1,3 +1,5 @@
+using ServiceDefaults.Authorization;
+
 namespace BookingService.API;
 
 public static class BookingApi
@@ -7,20 +9,20 @@ public static class BookingApi
     {
         var api = app.MapGroup("api/booking").HasApiVersion(1.0);
 
-        api.MapPost("/from-reservation", CreateBookingAsync);
+        api.MapPost("/from-reservation", CreateBookingAsync).RequireAuthorization(PermissionPolicies.Require("booking.write"));
            
-        api.MapPost("/draft", CreateBookingDraftAsync);
+        api.MapPost("/draft", CreateBookingDraftAsync).RequireAuthorization(PermissionPolicies.Require("booking.write"));
 
         // Begin check out, nên là put vì chuyển status booking sang awaiting payment
-        api.MapPut("/payment", ChangeToAwaitingPaymentAsync);
+        api.MapPut("/payment", ChangeToAwaitingPaymentAsync).RequireAuthorization(PermissionPolicies.Require("booking.write"));
 
-        api.MapGet("/cardtype", GetCardTypeAsync);
+        api.MapGet("/cardtype", GetCardTypeAsync).RequireAuthorization(PermissionPolicies.Require("booking.read"));
         
         // // Endpoint get booking by userId
-         api.MapGet("/{userId}", GetBookingByUserAsync);
+         api.MapGet("/{userId}", GetBookingByUserAsync).RequireAuthorization(PermissionPolicies.Require("booking.read"));
 
         // // Get booking by id
-        api.MapGet("/{bookingid:int}", GetBookingAsync);
+        api.MapGet("/{bookingid:int}", GetBookingAsync).RequireAuthorization(PermissionPolicies.Require("booking.read"));
 
         return api;
     }

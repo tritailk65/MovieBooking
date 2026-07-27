@@ -20,6 +20,9 @@ var booking = app.NewVersionedApi("Booking");
 
 booking.MapBookingApiV1();
 
+app.UseAuthentication();
+app.UseAuthorization();
+
 app.UseDefaultOpenApi();
 app.Run();
 
