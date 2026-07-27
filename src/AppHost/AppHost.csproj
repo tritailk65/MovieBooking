@@ -1,0 +1,24 @@
+<Project Sdk="Aspire.AppHost.Sdk/13.2.4">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <UserSecretsId>aac2e0f2-fd69-4944-8847-3c5265a13195</UserSecretsId>
+  </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="Aspire.Hosting.PostgreSQL" />
+      <PackageReference Include="Aspire.Hosting.Redis" />
+      <PackageReference Include="Aspire.Hosting.RabbitMQ" />
+    </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Booking.API/Booking.API.csproj" />
+    <ProjectReference Include="../Payment.API/Payment.API.csproj" />
+    <ProjectReference Include="../Catalog.API/Catalog.API.csproj" />
+    <ProjectReference Include="../Seat.API/Seat.API.csproj" />
+  </ItemGroup>
+
+</Project>

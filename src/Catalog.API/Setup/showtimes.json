@@ -1,0 +1,122 @@
+[
+  {
+    "Id": 1,
+    "MovieId": 1,
+    "HallId": 1,
+    "StartTime": "2026-06-15T19:00:00Z",
+    "EndTime": "2026-06-15T21:46:00Z",
+    "BasePrice": 120000.00
+  },
+  {
+    "Id": 2,
+    "MovieId": 2,
+    "HallId": 2,
+    "StartTime": "2026-06-15T20:00:00Z",
+    "EndTime": "2026-06-15T22:11:00Z",
+    "BasePrice": 90000.00
+  },
+  {
+    "Id": 3,
+    "MovieId": 3,
+    "HallId": 5,
+    "StartTime": "2026-06-16T18:30:00Z",
+    "EndTime": "2026-06-16T20:15:00Z",
+    "BasePrice": 85000.00
+  },
+  {
+    "Id": 4,
+    "MovieId": 3,
+    "HallId": 7,
+    "StartTime": "2026-06-16T21:00:00Z",
+    "EndTime": "2026-06-16T22:45:00Z",
+    "BasePrice": 95000.00
+  },
+  {
+    "Id": 5,
+    "MovieId": 4,
+    "HallId": 6,
+    "StartTime": "2026-06-17T19:00:00Z",
+    "EndTime": "2026-06-17T20:52:00Z",
+    "BasePrice": 85000.00
+  },
+  {
+    "Id": 6,
+    "MovieId": 5,
+    "HallId": 9,
+    "StartTime": "2026-06-17T18:00:00Z",
+    "EndTime": "2026-06-17T20:18:00Z",
+    "BasePrice": 110000.00
+  },
+  {
+    "Id": 7,
+    "MovieId": 5,
+    "HallId": 10,
+    "StartTime": "2026-06-17T21:00:00Z",
+    "EndTime": "2026-06-17T23:18:00Z",
+    "BasePrice": 100000.00
+  },
+  {
+    "Id": 8,
+    "MovieId": 6,
+    "HallId": 3,
+    "StartTime": "2026-06-18T20:00:00Z",
+    "EndTime": "2026-06-18T21:55:00Z",
+    "BasePrice": 150000.00
+  },
+  {
+    "Id": 9,
+    "MovieId": 7,
+    "HallId": 4,
+    "StartTime": "2026-06-18T17:30:00Z",
+    "EndTime": "2026-06-18T19:04:00Z",
+    "BasePrice": 115000.00
+  },
+  {
+    "Id": 10,
+    "MovieId": 8,
+    "HallId": 8,
+    "StartTime": "2026-06-19T22:00:00Z",
+    "EndTime": "2026-06-20T00:14:00Z",
+    "BasePrice": 90000.00
+  },
+  {
+    "Id": 11,
+    "MovieId": 8,
+    "HallId": 11,
+    "StartTime": "2026-06-19T19:30:00Z",
+    "EndTime": "2026-06-19T21:44:00Z",
+    "BasePrice": 105000.00
+  },
+  {
+    "Id": 12,
+    "MovieId": 9,
+    "HallId": 12,
+    "StartTime": "2026-06-20T16:00:00Z",
+    "EndTime": "2026-06-20T17:36:00Z",
+    "BasePrice": 100000.00
+  },
+  {
+    "Id": 13,
+    "MovieId": 10,
+    "HallId": 1,
+    "StartTime": "2026-06-20T21:00:00Z",
+    "EndTime": "2026-06-20T23:07:00Z",
+    "BasePrice": 130000.00
+  },
+  {
+    "Id": 14,
+    "MovieId": 4,
+    "HallId": 11,
+    "StartTime": "2026-06-21T19:15:00Z",
+    "EndTime": "2026-06-21T21:07:00Z",
+    "BasePrice": 105000.00
+  },
+  {
+    "Id": 15,
+    "MovieId": 1,
+    "HallId": 9,
+    "StartTime": "2026-06-21T18:45:00Z",
+    "EndTime": "2026-06-21T21:31:00Z",
+    "BasePrice": 140000.00
+  }
+]

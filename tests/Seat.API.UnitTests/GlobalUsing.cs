@@ -1,0 +1,9 @@
+global using Microsoft.Extensions.Logging;
+global using NSubstitute;
+global using Seat.API.Application.Command.ValidationReservation;
+global using Seat.API.Application.Seats.Command.ReleaseSeatReservation;
+global using Seat.API.Domain.Entities;
+global using Seat.API.Domain.Interfaces;
+global using Seat.API.Application.Command.LockSeat;
+global using Seat.API.Application.Seats.Commands.LockSeat;
+global using StackExchange.Redis;

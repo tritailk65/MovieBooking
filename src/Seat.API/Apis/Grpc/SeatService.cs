@@ -1,0 +1,53 @@
+using Grpc.Core;
+
+namespace Seat.API.Grpc;
+
+public class SeatService(
+    IMediator mediator,
+    ILogger<SeatService> logger) : SeatGrpc.SeatGrpcBase
+{
+    public override async Task<ValidationReservationResponse> ValidationReservation(ValidationReservationRequest request, ServerCallContext context)
+    {
+        if (logger.IsEnabled(LogLevel.Debug))
+        {
+            logger.LogDebug("Begin ValidationReservation call from method {Method} for reservation id {Id}", context.Method, request.ReservationId);
+        }
+
+        var command = new ValidationReservationCommand(request.ShowtimeId, request.ReservationId, request.UserId);
+        var result = await mediator.Send(command);
+
+        if (result is null)
+        {
+            return new ValidationReservationResponse { Success = false };
+        }
+
+        var response = new ValidationReservationResponse
+        {
+            Success = true,
+            ReservationId = result.Id.ToString(),
+            ShowtimeId = result.ShowtimeId,
+            UserId = result.UserId,
+            RemainingSeconds = result.RemainingSeconds,
+            BasePrice = decimal.ToDouble(result.BasePrice)
+        };
+
+        response.SeatIds.AddRange(result.SeatIds);
+
+        return response;
+    }
+
+    public override async Task<ReleaseSeatReservationResponse> ReleaseSeatReservation(ReleaseSeatReservationRequest request, ServerCallContext context)
+    {
+
+        if (logger.IsEnabled(LogLevel.Debug))
+        {
+            logger.LogDebug("Begin ReleaseSeatReservation call from method {Method} for basket id {Id}", context.Method, request.UserId);
+        }
+
+        var command = new ReleaseSeatReservationCommand(request.ShowtimeId, request.ReservationId, request.UserId);
+        var result = await mediator.Send(command);
+
+        var response = new ReleaseSeatReservationResponse{ Success = result};
+        return response;
+    }
+}

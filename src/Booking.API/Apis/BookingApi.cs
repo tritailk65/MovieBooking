@@ -1,0 +1,133 @@
+namespace BookingService.API;
+
+public static class BookingApi
+{
+
+    public static RouteGroupBuilder MapBookingApiV1(this IEndpointRouteBuilder app)
+    {
+        var api = app.MapGroup("api/booking").HasApiVersion(1.0);
+
+        api.MapPost("/from-reservation", CreateBookingAsync);
+           
+        api.MapPost("/draft", CreateBookingDraftAsync);
+
+        // Begin check out, nên là put vì chuyển status booking sang awaiting payment
+        api.MapPut("/payment", ChangeToAwaitingPaymentAsync);
+
+        api.MapGet("/cardtype", GetCardTypeAsync);
+        
+        // // Endpoint get booking by userId
+         api.MapGet("/{userId}", GetBookingByUserAsync);
+
+        // // Get booking by id
+        api.MapGet("/{bookingid:int}", GetBookingAsync);
+
+        return api;
+    }
+
+    public static async Task<BookingDraftDto> CreateBookingDraftAsync(CreateBookingDraftCommand command, IMediator mediator)
+    {
+        return await mediator.Send(command);
+    }
+
+    public static async Task<Results<Ok<string>, BadRequest<string>>> ChangeToAwaitingPaymentAsync(SetAwaitingPaymentBookingStatusCommand command, IMediator mediator)
+    {
+        var result = await mediator.Send(command);
+        if (result)
+        {
+            return TypedResults.Ok($"Change status waiting payment success");
+        } 
+        else
+        {
+            return TypedResults.BadRequest($"Change status waiting payment failed");
+        }
+    }
+
+    public static async Task<Results<Ok<string>, BadRequest<string>>> CreateBookingAsync(
+        [FromBody] FromReservationRequest request,
+        SeatGrpc.SeatGrpcClient seatClient,
+        IMediator mediator)
+    {
+        var validation = await seatClient.ValidationReservationAsync(new ValidationReservationRequest
+        {
+            ShowtimeId = request.showtimeId,
+            ReservationId = request.reservationId.ToString(),
+            UserId = request.userId
+        });
+
+        if (!validation.Success)
+        {
+            return TypedResults.BadRequest($"Validation seat reservation failed - ReservationId: {request.reservationId}");
+        }
+
+        var bookingItems = validation.SeatIds.Select(seatId => new SeatItem
+        {
+            ShowtimeId = validation.ShowtimeId,
+            SeatId = seatId,
+            BasePrice = Convert.ToDecimal(validation.BasePrice)
+        });
+
+        var createBookingCommand = new CreateBookingCommand(bookingItems, request.userId, request.userName, request.showtimeId, request.reservationId);
+
+        var requestId = Guid.NewGuid();
+        var requestBooking = new IdentifiedCommand<CreateBookingCommand, bool>(createBookingCommand, requestId);
+
+        var result = await mediator.Send(requestBooking);
+
+        if (result)
+        {
+            return TypedResults.Ok($"CreateBookingCommand succeeded - RequestId: {requestId}");
+        }
+        else
+        {
+            return TypedResults.BadRequest($"CreateOrderCommand failed - RequestId: {requestId}");
+        }
+    }
+
+    public static async Task<Ok<IEnumerable<CardTypeVM>>> GetCardTypeAsync([AsParameters] BookingService bookingService)
+    {
+        var cardType = await bookingService.BookingQueries.GetCardTypesAsync();
+        return TypedResults.Ok(cardType);
+    }
+
+    public static async Task<Results<Ok<BookingVM>, NotFound>> GetBookingAsync (int bookingId, [AsParameters] BookingService bookingService)
+    {
+        try
+        {
+            var booking = await bookingService.BookingQueries.GetBookingAsync(bookingId);
+            return TypedResults.Ok(booking);
+        } catch
+        {
+            return TypedResults.NotFound();
+        }
+    }
+    public static async Task<Results<Ok<IEnumerable<BookingVM>>, NotFound>> GetBookingByUserAsync (string userId, [AsParameters] BookingService bookingService)
+    {
+        // Tam thoi truyen user id thong qua parameter, khi cos identity, lay userid qua indentityservice
+        var booking = await bookingService.BookingQueries.GetBookingFromUserAsync(userId);
+        if(booking is null)
+        {
+            return TypedResults.NotFound();
+        }
+        return TypedResults.Ok(booking);
+    }
+    
+}
+
+public sealed record CreateBookingRequest
+{
+    public string UserId { get; init; } = string.Empty;
+    public int ShowtimeId { get; init; }
+    public int HallId { get; init; }
+    public IEnumerable<SeatItem> BookingItem { get; init; } = [];
+}
+
+public record FromReservationRequest
+{
+    public int showtimeId {get; init;}
+    public string userId {get; init;} = string.Empty;
+    public string userName {get; init;} = string.Empty;
+    public Guid reservationId {get ; init;}
+    public IEnumerable<SeatItem> BookingItem { get; init; } = [];
+
+}

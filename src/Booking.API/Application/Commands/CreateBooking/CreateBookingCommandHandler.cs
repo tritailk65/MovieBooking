@@ -1,0 +1,51 @@
+namespace BookingService.API.Application.Commands.CreateBooking;
+
+public class CreateBookingCommandHandler : IRequestHandler<CreateBookingCommand, bool>
+{
+    private readonly IBookingRepository _bookingRepository;
+    private readonly ILogger<CreateBookingCommandHandler> _logger;
+    private readonly IBookingIntegrationEventService _integrationEvent;
+
+    public CreateBookingCommandHandler(
+        IBookingRepository bookingRepository, 
+        ILogger<CreateBookingCommandHandler> logger, 
+        IBookingIntegrationEventService integrationEvent)
+    {
+        _bookingRepository = bookingRepository;
+        _logger = logger;
+        _integrationEvent = integrationEvent;
+    }
+
+    public async Task<bool> Handle (CreateBookingCommand request, CancellationToken cancellationToken)
+    {
+        // var bookingStartedIntegrationEvent = new BookingStartedIntegrationEvent(request.UserId);
+        // await _integrationEvent.AddAndSaveEventAsync(bookingStartedIntegrationEvent);
+
+        var booking = new Booking(request.UserId, request.UserName, request.ShowtimeId, request.ReservationId);
+
+        foreach (var item in request.BookingItem)
+        {
+            booking.AddBookingItem(item.ShowtimeId, item.SeatId, item.BasePrice);
+        }
+
+        _logger.LogInformation("Create Booking - Booking: {@Booking}", booking);
+        _bookingRepository.Add(booking);
+
+        return await _bookingRepository.UnitOfWork.SaveEntitiesAsync(cancellationToken);
+    }
+}
+
+public class CreateBookingIndentifiedCommandHandler : IdentifiedCommandHandler<CreateBookingCommand, bool>
+{
+    public CreateBookingIndentifiedCommandHandler(
+        IMediator mediator,
+        IRequestManager requestManager,
+        ILogger<IdentifiedCommandHandler<CreateBookingCommand, bool>> logger) : base(mediator, requestManager, logger)
+    {
+    }
+
+    protected override bool CreateResultForDuplicateRequest()
+    {
+        return true;
+    }
+}
