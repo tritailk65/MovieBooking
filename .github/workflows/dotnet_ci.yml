@@ -11,10 +11,6 @@ jobs:
   build-test:
     runs-on: ubuntu-latest
 
-    defaults:
-      run:
-        working-directory: MovieBooking
-
     steps:
       - uses: actions/checkout@v4
 
@@ -45,13 +41,13 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Build Catalog image
-        run: docker build -t moviebooking-catalog:${{ github.sha }} -f MovieBooking/Catalog.API/Dockerfile MovieBooking
+        run: docker build -t moviebooking-catalog:${{ github.sha }} -f src/Catalog.API/Dockerfile .
 
       - name: Build Seat image
-        run: docker build -t moviebooking-seat:${{ github.sha }} -f MovieBooking/Seat.API/Dockerfile MovieBooking
+        run: docker build -t moviebooking-seat:${{ github.sha }} -f src/Seat.API/Dockerfile .
 
       - name: Build Booking image
-        run: docker build -t moviebooking-booking:${{ github.sha }} -f MovieBooking/Booking.API/Dockerfile MovieBooking
+        run: docker build -t moviebooking-booking:${{ github.sha }} -f src/Booking.API/Dockerfile .
 
       - name: Build Payment image
-        run: docker build -t moviebooking-payment:${{ github.sha }} -f MovieBooking/Payment.API/Dockerfile MovieBooking
+        run: docker build -t moviebooking-payment:${{ github.sha }} -f src/Payment.API/Dockerfile .
