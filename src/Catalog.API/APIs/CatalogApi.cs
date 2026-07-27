@@ -1,5 +1,3 @@
-
-
 namespace Catalog.API;
 
 public static class CatalogApi
@@ -8,13 +6,13 @@ public static class CatalogApi
     {
         var group = endpoints.MapGroup("/api/v1/catalog")
             .WithTags("Catalog API");
-            //.RequireAuthorization();
 
         group.MapPost("/movies", async (CreateMovieCommand command, IMediator mediator) =>
         {
             var movieId = await mediator.Send(command);
             return Results.Created($"/api/v1/movies/{movieId}", new { Id = movieId });
         })
+        .RequireAuthorization(CatalogScopes.Write)
         .WithName("CreateMovie")
         .WithDescription("Creates a new movie in the catalog.")
         .Produces(StatusCodes.Status201Created)
@@ -30,6 +28,7 @@ public static class CatalogApi
             var isUpdated = await mediator.Send(command);
             return isUpdated ? Results.NoContent() : Results.NotFound(new { Error = "Movie not found." });
         })
+        .RequireAuthorization(CatalogScopes.Write)
         .WithName("UpdateMovie")
         .WithDescription("Updates an existing movie in the catalog.")
         .Produces(StatusCodes.Status204NoContent)
@@ -44,6 +43,7 @@ public static class CatalogApi
 
             return isDeleted ? Results.NoContent() : Results.NotFound(new { Error = "Movie not found." });
         })
+        .RequireAuthorization(CatalogScopes.Write)
         .WithName("DeleteMovie")
         .WithDescription("Deletes a movie from the catalog.")
         .Produces(StatusCodes.Status204NoContent)
@@ -55,6 +55,7 @@ public static class CatalogApi
             var result = await mediator.Send(command);
             return Results.Ok(result);
         })
+        .RequireAuthorization(CatalogScopes.Read)
         .WithName("GetMovies")
         .WithDescription("Retrieves a paginated list of movies from the catalog.")
         .Produces(StatusCodes.Status200OK)
@@ -66,6 +67,7 @@ public static class CatalogApi
             // Trả về mã 201 Created cùng ID của lịch chiếu mới
             return Results.Created($"/api/v1/showtimes/{showtimeId}", new { Id = showtimeId });
         })
+        .RequireAuthorization(CatalogScopes.Write)
         .WithName("Create Showtime")
         .WithDescription("Creates a showtime in the catalog.")
         .Produces(StatusCodes.Status201Created)

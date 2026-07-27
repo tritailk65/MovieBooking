@@ -32,9 +32,10 @@ namespace ServiceDefaults
             }
 
             // prevent from mapping "sub" claim to nameidentifier.
+                    
             JsonWebTokenHandler.DefaultInboundClaimTypeMap.Remove("sub");
 
-            services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer(options =>
+            services.AddAuthentication().AddJwtBearer(options =>
             {
                 var identityUrl = identitySection.GetRequiredValue("Url");
                 var audience = identitySection.GetRequiredValue("Audience");
@@ -42,14 +43,16 @@ namespace ServiceDefaults
                 options.Authority = identityUrl;
                 options.RequireHttpsMetadata = false;
                 options.Audience = audience;
-                options.MapInboundClaims = false;
+                //options.MapInboundClaims = false;
 
 #if DEBUG
                 //Needed if using Android Emulator Locally. See https://learn.microsoft.com/en-us/dotnet/maui/data-cloud/local-web-services?view=net-maui-8.0#android
                 options.TokenValidationParameters.ValidIssuers = [identityUrl, "https://10.0.2.2:5243"];
 #else
-            options.TokenValidationParameters.ValidIssuers = [identityUrl];
+                options.TokenValidationParameters.ValidIssuers = [identityUrl];
 #endif
+
+                options.TokenValidationParameters.ValidateAudience = true;
             });
 
             services.AddAuthorization();

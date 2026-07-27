@@ -1,12 +1,17 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Security.Claims;
+using System.Text.Encodings.Web;
 using global::Catalog.API.Application.Movies.Commands.UpdateMovie;
 using global::Catalog.API.Application.Moviess.Commands.CreateMovie;
 using global::Catalog.API.Application.Showtimes.Commands.CreateShowtime;
 using MediatR;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using NSubstitute;
 
 namespace Catalog.API.UnitTests.Apis;
@@ -151,16 +156,49 @@ public class CatalogApiTests
         var builder = WebApplication.CreateBuilder();
 
         builder.WebHost.UseTestServer();
+        builder.Logging.ClearProviders();
 
         builder.Services.AddRouting();
         builder.Services.AddSingleton(mediator);
+        builder.Services
+            .AddAuthentication(TestAuthenticationHandler.AuthenticationSchemeName)
+            .AddScheme<AuthenticationSchemeOptions, TestAuthenticationHandler>(
+                TestAuthenticationHandler.AuthenticationSchemeName,
+                _ => { });
+        builder.Services.AddCatalogAuthorization();
 
         var app = builder.Build();
 
+        app.UseAuthentication();
+        app.UseAuthorization();
         app.MapCatalogApi();
 
         await app.StartAsync();
 
         return app;
+    }
+
+    private sealed class TestAuthenticationHandler(
+        IOptionsMonitor<AuthenticationSchemeOptions> options,
+        ILoggerFactory logger,
+        UrlEncoder encoder)
+        : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
+    {
+        public const string AuthenticationSchemeName = "Test";
+
+        protected override Task<AuthenticateResult> HandleAuthenticateAsync()
+        {
+            Claim[] claims =
+            [
+                new(ClaimTypes.NameIdentifier, "catalog-api-test-user"),
+                new("scope", $"{CatalogScopes.Read} {CatalogScopes.Write}")
+            ];
+
+            var identity = new ClaimsIdentity(claims, AuthenticationSchemeName);
+            var principal = new ClaimsPrincipal(identity);
+            var ticket = new AuthenticationTicket(principal, AuthenticationSchemeName);
+
+            return Task.FromResult(AuthenticateResult.Success(ticket));
+        }
     }
 }

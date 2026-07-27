@@ -118,8 +118,9 @@ namespace ServiceDefaults
             options.AddOperationTransformer((operation, context, cancellationToken) =>
             {
                 var metadata = context.Description.ActionDescriptor.EndpointMetadata;
+                var authorizationData = metadata.OfType<IAuthorizeData>().ToList();
 
-                if (!metadata.OfType<IAuthorizeData>().Any())
+                if (authorizationData.Count == 0)
                 {
                     return Task.CompletedTask;
                 }
@@ -129,12 +130,19 @@ namespace ServiceDefaults
                 operation.Responses.TryAdd("403", new OpenApiResponse { Description = "Forbidden" });
 
                 var oAuthScheme = new OpenApiSecuritySchemeReference("oauth2", null);
+                var configuredScopes = scopes.ToHashSet(StringComparer.Ordinal);
+                var requiredScopes = authorizationData
+                    .Select(data => data.Policy)
+                    .Where(policy => policy is not null && configuredScopes.Contains(policy))
+                    .Cast<string>()
+                    .Distinct(StringComparer.Ordinal)
+                    .ToList();
 
                 operation.Security = new List<OpenApiSecurityRequirement>
                 {
                     new()
                     {
-                        [oAuthScheme] = scopes.ToList()
+                        [oAuthScheme] = requiredScopes
                     }
                 };
 
@@ -203,11 +211,18 @@ namespace ServiceDefaults
                     Flows = new OpenApiOAuthFlows()
                     {
                         // TODO: Change this to use Authorization Code flow with PKCE
-                        Implicit = new OpenApiOAuthFlow()
+                        // Implicit = new OpenApiOAuthFlow()
+                        // {
+                        //     AuthorizationUrl = new Uri($"{identityUrlExternal}/oauth2/authorize"),
+                        //     TokenUrl = new Uri($"{identityUrlExternal}/oauth2/token"),
+                        //     Scopes = scopes,
+                        // }
+                        AuthorizationCode = new OpenApiOAuthFlow
                         {
-                            AuthorizationUrl = new Uri($"{identityUrlExternal}/connect/authorize"),
-                            TokenUrl = new Uri($"{identityUrlExternal}/connect/token"),
-                            Scopes = scopes,
+                            AuthorizationUrl = new Uri($"{identityUrlExternal}/oauth2/authorize"),
+                            TokenUrl = new Uri($"{identityUrlExternal}/oauth2/token"),
+                            Scopes = scopes
+                        
                         }
                     }
                 };
@@ -222,7 +237,7 @@ namespace ServiceDefaults
 
                 document.Components ??= new();
                 document.Components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
-                document.Components.SecuritySchemes.Add("Bearer", securityScheme);
+                document.Components.SecuritySchemes.Add("oauth2", securityScheme);
                 return Task.CompletedTask;
             }
         }

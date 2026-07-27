@@ -6,7 +6,8 @@ namespace Catalog.API.Extensions
     {
         public static void AddApplicationServices(this IHostApplicationBuilder builder)
         {
-            // builder.AddDefaultAuthentication();
+            builder.AddDefaultAuthentication();
+            builder.Services.AddCatalogAuthorization();
 
             // Avoid loading full database config and migrations if startup
             // is being invoked from build-time OpenAPI generation

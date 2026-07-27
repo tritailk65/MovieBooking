@@ -15,7 +15,7 @@ dotnet run
 ```
 
 ### Testing flow
-Build image
+Build image:
 ```bat
 cd MovieBooking
 docker build -t moviebooking-catalog:local -f src/Catalog.API/Dockerfile .
@@ -24,7 +24,9 @@ docker build -t moviebooking-seat:local -f src/Seat.API/Dockerfile .
 docker build -t moviebooking-payment:local -f src/Payment.API/Dockerfile .
 ```
 
-Build image and run with docker-compose
+Or
+
+Build image and run with docker-compose:
 ```shell
 cd MovieBooking
 docker compose up -d
