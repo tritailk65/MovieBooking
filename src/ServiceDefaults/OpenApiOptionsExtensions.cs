@@ -11,6 +11,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Primitives;
 using Microsoft.OpenApi;
+using ServiceDefaults.Authorization;
 
 namespace ServiceDefaults
 {
@@ -133,8 +134,13 @@ namespace ServiceDefaults
                 var configuredScopes = scopes.ToHashSet(StringComparer.Ordinal);
                 var requiredScopes = authorizationData
                     .Select(data => data.Policy)
-                    .Where(policy => policy is not null && configuredScopes.Contains(policy))
-                    .Cast<string>()
+                    .Where(policy => policy is not null)
+                    .Select(policy => policy!.StartsWith(
+                            PermissionPolicyProvider.Prefix,
+                            StringComparison.Ordinal)
+                        ? policy[PermissionPolicyProvider.Prefix.Length..]
+                        : policy)
+                    .Where(configuredScopes.Contains)
                     .Distinct(StringComparer.Ordinal)
                     .ToList();
 

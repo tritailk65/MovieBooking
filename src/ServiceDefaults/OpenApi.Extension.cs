@@ -29,6 +29,11 @@ namespace ServiceDefaults
             {
                 var descriptions = app.DescribeApiVersions();
                 var defaultDocument = descriptions.Count > 0 ? descriptions[^1].GroupName : "v1";
+                var defaultScopes = configuration
+                    .GetSection("Identity:Scopes")
+                    .GetChildren()
+                    .Select(scope => scope.Key)
+                    .ToArray();
 
                 app.MapScalarApiReference(options =>
                 {
@@ -39,6 +44,10 @@ namespace ServiceDefaults
                     {
                         flow.ClientId = configuration["Identity:ClientId"];
                     });
+
+                    // Pre-select every configured scope. Scalar still allows the user
+                    // to unselect scopes and request only the subset they need.
+                    options.AddDefaultScopes("oauth2", defaultScopes);
 
                     foreach (var description in descriptions)
                     {

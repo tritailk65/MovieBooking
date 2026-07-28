@@ -1,4 +1,5 @@
 using Seat.API.Application.Seats.GetSeatReservation;
+using ServiceDefaults.Authorization;
 
 namespace Seat.API.Endpoints;
 
@@ -17,6 +18,7 @@ public static class SeatEndpoints
             
             return Results.Ok(seats);
         })
+        .RequireAuthorization(PermissionPolicies.Require("seat.read"))
         .WithName("GetShowtimeSeats")
         .Produces<IEnumerable<SeatDto>>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest);
@@ -28,6 +30,7 @@ public static class SeatEndpoints
             
             return Results.Ok(reservation);
         })
+        .RequireAuthorization(PermissionPolicies.Require("seat.read"))
         .WithName("GetSeatReservation")
         .Produces<IEnumerable<SeatReservation>>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest);
@@ -51,7 +54,8 @@ public static class SeatEndpoints
             
             // Trả về 409 Conflict tranh chấp tài nguyên thất bại
             return Results.Conflict(new { Message = "This seat have been ordered" });
-        });
+        })
+        .RequireAuthorization(PermissionPolicies.Require("seat.write"));
 
         // THis endpoint use for testing, in acctual this command should be called in IntegraionEvent Handling
         group.MapPost("/release", async (ReleaseSeatCommand command, IMediator mediator) =>
@@ -63,7 +67,8 @@ public static class SeatEndpoints
                 return Results.Ok(new {Message = "Released seat successfully"});
             }
             return Results.Conflict(new {Mesage = "Release seat fail, seat already have been booking or ordered"});
-       });
+       })
+       .RequireAuthorization(PermissionPolicies.Require("seat.write"));
 
         group.MapPost("/markseatsold", async (MarkSeatSoldCommand command, IMediator mediator) =>
         {
@@ -74,7 +79,8 @@ public static class SeatEndpoints
                 return Results.Ok(new {Message = "Mark seat sold successfully"});
             }
             return Results.Conflict(new {Mesage = "Mark seat sold fail, seat already have been booking or ordered"});
-        });
+        })
+        .RequireAuthorization(PermissionPolicies.Require("seat.write"));
 
         // Endpoint release reservation khi user quyết định thanh toán
         // Đặt trước tên endpoint là "confirm"
@@ -87,7 +93,8 @@ public static class SeatEndpoints
                 return Results.Ok(new {Message = "Release reservation successfully"});
             }
             return Results.Conflict(new {Mesage = "Release seat reservation fail"});
-        });
+        })
+        .RequireAuthorization(PermissionPolicies.Require("seat.write"));
         
         // Validation và bắt đầu chuyển qua booking service
         group.MapPut("/validation-reservation", async (ValidationReservationCommand command, IMediator mediator) =>
@@ -99,7 +106,8 @@ public static class SeatEndpoints
                 return Results.Ok(result);
             }
             return Results.Conflict(new {Mesage = "Validation seat reservation fail"});
-        });
+        })
+        .RequireAuthorization(PermissionPolicies.Require("seat.write"));
         
         // KHi user payment thanh toan thanh cong
         group.MapPost("/confirm-reservation", async (ConfirmReservationCommand command, IMediator mediator) => {
@@ -110,9 +118,8 @@ public static class SeatEndpoints
                 return Results.Ok(result);
             }
             return Results.Conflict(new {Mesage = "Confirm seat reservation fail"});
-        });
-
-        
+        })
+        .RequireAuthorization(PermissionPolicies.Require("seat.write"));
 
        #endregion
         

@@ -21,10 +21,12 @@ app.MapDefaultEndpoints();
 
 app.UseStatusCodePages();
 
+app.UseAuthentication();
+app.UseAuthorization();
+
 app.MapSeatApi();
 
 app.UseDefaultOpenApi();
-
 
 
 app.MapGrpcService<SeatService>();

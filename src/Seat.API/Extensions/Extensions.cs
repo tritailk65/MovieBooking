@@ -9,6 +9,11 @@ public static class Extensions
     {
         builder.AddRedisClient("redis");
 
+        builder.AddDefaultAuthentication();
+
+        builder.Services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
+        builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
+
         builder.Services.AddSingleton<ISeatRepository, SeatRedisRepository>();
         builder.Services.AddSingleton<IRedisLockService, RedisLockService>();
  

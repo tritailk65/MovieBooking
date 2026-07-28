@@ -7,21 +7,20 @@ using global::Catalog.API.Application.Moviess.Commands.CreateMovie;
 using global::Catalog.API.Application.Showtimes.Commands.CreateShowtime;
 using MediatR;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using NSubstitute;
+using ServiceDefaults.Authorization;
 
 namespace Catalog.API.UnitTests.Apis;
 
 public class CatalogApiTests
 {
-    /// <summary>
-    /// POST /movies -> Created
-    /// </summary>
-    /// <returns></returns>
     [Fact]
     public async Task CreateMovie_WhenMediatorReturnsMovieId_ShouldReturnCreated()
     {
@@ -165,7 +164,9 @@ public class CatalogApiTests
             .AddScheme<AuthenticationSchemeOptions, TestAuthenticationHandler>(
                 TestAuthenticationHandler.AuthenticationSchemeName,
                 _ => { });
-        builder.Services.AddCatalogAuthorization();
+        builder.Services.AddAuthorization();
+        builder.Services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
+        builder.Services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
 
         var app = builder.Build();
 
@@ -184,14 +185,14 @@ public class CatalogApiTests
         UrlEncoder encoder)
         : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
     {
-        public const string AuthenticationSchemeName = "Test";
+        public const string AuthenticationSchemeName = JwtBearerDefaults.AuthenticationScheme;
 
         protected override Task<AuthenticateResult> HandleAuthenticateAsync()
         {
             Claim[] claims =
             [
                 new(ClaimTypes.NameIdentifier, "catalog-api-test-user"),
-                new("scope", $"{CatalogScopes.Read} {CatalogScopes.Write}")
+                new("scope", "catalog.read catalog.write")
             ];
 
             var identity = new ClaimsIdentity(claims, AuthenticationSchemeName);

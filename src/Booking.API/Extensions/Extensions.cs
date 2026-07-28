@@ -1,4 +1,5 @@
 using BookingService.API.Application.IntegrationEvents.EventHandling;
+using BookingService.API.Infrastructure.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using ServiceDefaults.Authorization;
 
@@ -25,18 +26,27 @@ public static class Extensions
 
         services.AddMigration<BookingContext, BookingContextSeed>();    
 
-                // Add the integration service that consume the DbContext
+        // Add the integration service that consume the DbContext
         services.AddTransient<IIntegrationEventLogService, IntegrationEventLogService<BookingContext>>();
         services.AddTransient<IBookingIntegrationEventService, BookingIntegrationEventService>();
 
         builder.AddRabbitMqEventBus("eventbus")
                .AddEventBusSubscriptions();
 
+        services.AddOptions<SeatServiceAuthenticationOptions>()
+            .BindConfiguration(SeatServiceAuthenticationOptions.SectionName)
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        services.AddHttpClient<SeatServiceTokenProvider>();
+        services.AddTransient<SeatServiceAuthorizationHandler>();
+
         services.AddGrpcClient<SeatGrpc.SeatGrpcClient>(options =>
-        {
-            var seatUrl = builder.Configuration["Grpc:SeatUrl"] ?? "https+http://seat-api";
-            options.Address = new Uri(seatUrl);
-        });
+            {
+                var seatUrl = builder.Configuration["Grpc:SeatUrl"] ?? "https+http://seat-api";
+                options.Address = new Uri(seatUrl);
+            });
+            //.AddHttpMessageHandler<SeatServiceAuthorizationHandler>();
 
 
         // Get authenticate context from middleware

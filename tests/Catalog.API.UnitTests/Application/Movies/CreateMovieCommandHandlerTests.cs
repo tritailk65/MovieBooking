@@ -7,10 +7,6 @@ namespace Catalog.API.UnitTests.Application.Movies;
 
 public class CreateMovieCommandHandlerTests
 {
-    /// <summary>
-    /// CreateMovieCommandHandler -> lưu Movie
-    /// </summary>
-    /// <returns></returns>
     [Fact]
     public async Task Handle_WhenCommandIsValid_ShouldCreateMovie()
     {

@@ -24,7 +24,9 @@ public sealed class PermissionAuthorizationHandler
             ["scope", "scp"],
             requirement.Permission);
 
-        if (hasPermission && hasScope)
+        // OAuth providers normally emit granted API access in "scope"/"scp".
+        // Keep "permissions" as an alternative for providers using that claim.
+        if (hasPermission || hasScope)
         {
             context.Succeed(requirement);
         }

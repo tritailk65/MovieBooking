@@ -1,4 +1,5 @@
 using Grpc.Core;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Seat.API.Grpc;
 
@@ -6,6 +7,7 @@ public class SeatService(
     IMediator mediator,
     ILogger<SeatService> logger) : SeatGrpc.SeatGrpcBase
 {
+    [Authorize(Policy = "Permission:seat.write")]
     public override async Task<ValidationReservationResponse> ValidationReservation(ValidationReservationRequest request, ServerCallContext context)
     {
         if (logger.IsEnabled(LogLevel.Debug))
@@ -36,6 +38,7 @@ public class SeatService(
         return response;
     }
 
+    [Authorize(Policy = "Permission:seat.write")]
     public override async Task<ReleaseSeatReservationResponse> ReleaseSeatReservation(ReleaseSeatReservationRequest request, ServerCallContext context)
     {
 
