@@ -11,10 +11,10 @@ public static class Extensions
     {
         var services = builder.Services;
 
-        builder.AddDefaultAuthentication();
+        //builder.AddDefaultAuthentication();
 
-        services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
-        services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
+        //services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
+        //services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
             
 
         services.AddDbContext<BookingContext>(options =>

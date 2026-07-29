@@ -14,7 +14,7 @@ public static class CatalogApi
             var movieId = await mediator.Send(command);
             return Results.Created($"/api/v1/movies/{movieId}", new { Id = movieId });
         })
-        .RequireAuthorization(PermissionPolicies.Require("catalog.write"))
+        //.RequireAuthorization(PermissionPolicies.Require("catalog.write"))
         .WithName("CreateMovie")
         .WithDescription("Creates a new movie in the catalog.")
         .Produces(StatusCodes.Status201Created)
@@ -30,7 +30,7 @@ public static class CatalogApi
             var isUpdated = await mediator.Send(command);
             return isUpdated ? Results.NoContent() : Results.NotFound(new { Error = "Movie not found." });
         })
-        .RequireAuthorization(PermissionPolicies.Require("catalog.write"))
+        //.RequireAuthorization(PermissionPolicies.Require("catalog.write"))
         .WithName("UpdateMovie")
         .WithDescription("Updates an existing movie in the catalog.")
         .Produces(StatusCodes.Status204NoContent)
@@ -45,7 +45,7 @@ public static class CatalogApi
 
             return isDeleted ? Results.NoContent() : Results.NotFound(new { Error = "Movie not found." });
         })
-        .RequireAuthorization(PermissionPolicies.Require("catalog.write"))
+        //.RequireAuthorization(PermissionPolicies.Require("catalog.write"))
         .WithName("DeleteMovie")
         .WithDescription("Deletes a movie from the catalog.")
         .Produces(StatusCodes.Status204NoContent)
@@ -57,7 +57,7 @@ public static class CatalogApi
             var result = await mediator.Send(command);
             return Results.Ok(result);
         })
-        .RequireAuthorization(PermissionPolicies.Require("catalog.read"))
+        //.RequireAuthorization(PermissionPolicies.Require("catalog.read"))
         .WithName("GetMovies")
         .WithDescription("Retrieves a paginated list of movies from the catalog.")
         .Produces(StatusCodes.Status200OK)
@@ -69,7 +69,7 @@ public static class CatalogApi
             // Trả về mã 201 Created cùng ID của lịch chiếu mới
             return Results.Created($"/api/v1/showtimes/{showtimeId}", new { Id = showtimeId });
         })
-        .RequireAuthorization(PermissionPolicies.Require("catalog.write"))
+        //.RequireAuthorization(PermissionPolicies.Require("catalog.write"))
         .WithName("Create Showtime")
         .WithDescription("Creates a showtime in the catalog.")
         .Produces(StatusCodes.Status201Created)

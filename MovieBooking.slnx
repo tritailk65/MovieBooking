@@ -16,6 +16,7 @@
     <Project Path="src/IntergrationEventLogEF/IntergrationEventLogEF.csproj" />
     <Project Path="src/Payment.API/Payment.API.csproj" />
     <Project Path="src/Seat.API/Seat.API.csproj" />
+    <Project Path="src/SagaOrchestration/SagaOrchestration.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Booking.API.UnitTests/Booking.API.UnitTests.csproj" />

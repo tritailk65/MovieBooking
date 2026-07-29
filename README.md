@@ -15,6 +15,13 @@ dotnet run
 ```
 
 ### Testing flow
+Development test
+```shell
+dotnet build
+dotnet test
+```
+
+Production smoke-test
 Build image:
 ```bat
 cd MovieBooking

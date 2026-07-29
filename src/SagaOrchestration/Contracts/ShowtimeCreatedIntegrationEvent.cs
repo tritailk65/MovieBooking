@@ -1,4 +1,4 @@
-namespace Catalog.API.IntegrationEvents.Event;
+namespace SagaOrchestration;
 
 public record ShowtimeCreatedIntegrationEvent : IntegrationEvent
 {
