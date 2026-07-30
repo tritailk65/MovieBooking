@@ -19,7 +19,7 @@ public static class BookingApi
         api.MapGet("/cardtype", GetCardTypeAsync);//.RequireAuthorization(PermissionPolicies.Require("booking.read"));
         
         // // Endpoint get booking by userId
-         api.MapGet("/{userId}", GetBookingByUserAsync);//.RequireAuthorization(PermissionPolicies.Require("booking.read"));
+        api.MapGet("/{userId}", GetBookingByUserAsync);//.RequireAuthorization(PermissionPolicies.Require("booking.read"));
 
         // // Get booking by id
         api.MapGet("/{bookingid:int}", GetBookingAsync);//.RequireAuthorization(PermissionPolicies.Require("booking.read"));
@@ -50,6 +50,7 @@ public static class BookingApi
         SeatGrpc.SeatGrpcClient seatClient,
         IMediator mediator)
     {
+        // Gọi Seat Service để check data
         var validation = await seatClient.ValidationReservationAsync(new ValidationReservationRequest
         {
             ShowtimeId = request.showtimeId,
@@ -62,6 +63,7 @@ public static class BookingApi
             return TypedResults.BadRequest($"Validation seat reservation failed - ReservationId: {request.reservationId}");
         }
 
+        // Lấy dữ liệu thật từ seat service
         var bookingItems = validation.SeatIds.Select(seatId => new SeatItem
         {
             ShowtimeId = validation.ShowtimeId,

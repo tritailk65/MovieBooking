@@ -22,6 +22,7 @@
     <ProjectReference Include="../ServiceDefaults/ServiceDefaults.csproj" />
   </ItemGroup>
 
+
   <ItemGroup>
     <Protobuf Include="Infrastructure\Protos\seat.proto" GrpcServices="Server" />
   </ItemGroup>

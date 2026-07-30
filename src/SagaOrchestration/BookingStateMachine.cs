@@ -12,7 +12,8 @@ public sealed class BookingStateMachine : MassTransitStateMachine<BookingSaga>
     private Event<BookingPaymentSucceededIntegrationEvent> OnPaymentSuccess {get; set; } = null!;
     private Event<BookingPaymentFailedIntegrationEvent> OnPaymentFailed {get; set;} = null!;
     private Event<BookingStatusChangedToCancelledIntegrationEvent> OnBookingCancled {get; set;} = null!;
-    private Event<BookingStatusChangedToSubmittedIntegrationEvent> OnBookingSubmited {get; set;} = null!;
+    private Event<Fault<BookingStartedIntegrationEvent>> OnBookingCreateFault {get; set; } = null!;
+    
 
     public BookingStateMachine(ILogger<BookingStateMachine> logger)
     {

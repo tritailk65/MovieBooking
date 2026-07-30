@@ -1,7 +1,4 @@
 using BookingService.API.Application.IntegrationEvents.EventHandling;
-using BookingService.API.Infrastructure.Authentication;
-using Microsoft.AspNetCore.Authorization;
-using ServiceDefaults.Authorization;
 
 namespace BookingService.API.Extensions;
 
@@ -16,7 +13,6 @@ public static class Extensions
         //services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
         //services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();
             
-
         services.AddDbContext<BookingContext>(options =>
         {
             options.UseNpgsql(builder.Configuration.GetConnectionString("bookingDb"));
@@ -33,19 +29,20 @@ public static class Extensions
         builder.AddRabbitMqEventBus("eventbus")
                .AddEventBusSubscriptions();
 
-        services.AddOptions<SeatServiceAuthenticationOptions>()
-            .BindConfiguration(SeatServiceAuthenticationOptions.SectionName)
-            .ValidateDataAnnotations()
-            .ValidateOnStart();
+        // services.AddOptions<SeatServiceAuthenticationOptions>()
+        //     .BindConfiguration(SeatServiceAuthenticationOptions.SectionName)
+        //     .ValidateDataAnnotations()
+        //     .ValidateOnStart();
 
-        services.AddHttpClient<SeatServiceTokenProvider>();
-        services.AddTransient<SeatServiceAuthorizationHandler>();
+        // services.AddHttpClient<SeatServiceTokenProvider>();
+        // services.AddTransient<SeatServiceAuthorizationHandler>();
 
         services.AddGrpcClient<SeatGrpc.SeatGrpcClient>(options =>
             {
-                var seatUrl = builder.Configuration["Grpc:SeatUrl"] ?? "https+http://seat-api";
+                var seatUrl = builder.Configuration["Grpc:SeatUrl"] ?? "http://seat-api";
                 options.Address = new Uri(seatUrl);
             });
+            // .AddServiceDiscovery();
             //.AddHttpMessageHandler<SeatServiceAuthorizationHandler>();
 
 
