@@ -5,9 +5,9 @@ public record BookingPaymentSucceededIntegrationEvent : IntegrationEvent
     public int BookingId {get; }
     public int ShowtimeId {get;}
     public string UserId {get;}
-    public string ReservationId {get;}
+    public Guid ReservationId {get;}
 
-    public BookingPaymentSucceededIntegrationEvent(int bookingId, int showtimeId, string userId, string reservationId)
+    public BookingPaymentSucceededIntegrationEvent(int bookingId, int showtimeId, string userId, Guid reservationId)
     {
         BookingId = bookingId;
         ShowtimeId = showtimeId;

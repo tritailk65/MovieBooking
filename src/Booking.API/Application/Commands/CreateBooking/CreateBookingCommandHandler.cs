@@ -1,5 +1,7 @@
 namespace BookingService.API.Application.Commands.CreateBooking;
 
+using SagaOrchestration.Contract;
+
 public class CreateBookingCommandHandler : IRequestHandler<CreateBookingCommand, bool>
 {
     private readonly IBookingRepository _bookingRepository;
@@ -18,9 +20,6 @@ public class CreateBookingCommandHandler : IRequestHandler<CreateBookingCommand,
 
     public async Task<bool> Handle (CreateBookingCommand request, CancellationToken cancellationToken)
     {
-        // var bookingStartedIntegrationEvent = new BookingStartedIntegrationEvent(request.UserId);
-        // await _integrationEvent.AddAndSaveEventAsync(bookingStartedIntegrationEvent);
-
         var booking = new Booking(request.UserId, request.UserName, request.ShowtimeId, request.ReservationId);
 
         foreach (var item in request.BookingItem)
@@ -31,7 +30,14 @@ public class CreateBookingCommandHandler : IRequestHandler<CreateBookingCommand,
         _logger.LogInformation("Create Booking - Booking: {@Booking}", booking);
         _bookingRepository.Add(booking);
 
-        return await _bookingRepository.UnitOfWork.SaveEntitiesAsync(cancellationToken);
+        var saveBooking = await _bookingRepository.UnitOfWork.SaveEntitiesAsync(cancellationToken);
+        if (saveBooking)
+        {
+            var bookingStartedIntegrationEvent = new BookingStartedIntegrationEvent(booking.Id, request.ReservationId, request.UserName, request.UserId);
+            await _integrationEvent.AddAndSaveEventAsync(bookingStartedIntegrationEvent);
+        }
+
+        return true;
     }
 }
 

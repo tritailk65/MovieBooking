@@ -10,7 +10,6 @@ public static class BookingApi
         var api = app.MapGroup("api/booking").HasApiVersion(1.0);
 
         api.MapPost("/from-reservation", CreateBookingAsync);//.RequireAuthorization(PermissionPolicies.Require("booking.write"));
-           
         api.MapPost("/draft", CreateBookingDraftAsync);//.RequireAuthorization(PermissionPolicies.Require("booking.write"));
 
         // Begin check out, nên là put vì chuyển status booking sang awaiting payment
@@ -27,9 +26,34 @@ public static class BookingApi
         return api;
     }
 
-    public static async Task<BookingDraftDto> CreateBookingDraftAsync(CreateBookingDraftCommand command, IMediator mediator)
+    public static async Task<BookingDraftDto> CreateBookingDraftAsync(
+        CreateBookingDraftCommand command,
+        SeatGrpc.SeatGrpcClient seatClient,
+        IMediator mediator,
+        CancellationToken cancellationToken)
     {
-        return await mediator.Send(command);
+        var requestedSeats = command.seats.ToArray();
+        var showtimeIds = requestedSeats
+            .Select(seat => seat.ShowtimeId)
+            .Distinct();
+
+        var snapshotTasks = showtimeIds.Select(async showtimeId =>
+        {
+            var snapshot = await seatClient.GetShowtimeSeatsAsync(
+                new GetShowtimeSeatsRequest { ShowtimeId = showtimeId.ToString() },
+                cancellationToken: cancellationToken);
+
+            return (showtimeId, seatIds: snapshot.Seats.Select(seat => seat.SeatId).ToHashSet());
+        });
+
+        var snapshots = (await Task.WhenAll(snapshotTasks))
+            .ToDictionary(snapshot => snapshot.showtimeId, snapshot => snapshot.seatIds);
+
+        var snapshotSeats = requestedSeats.Where(seat =>
+            snapshots.TryGetValue(seat.ShowtimeId, out var seatIds) &&
+            seatIds.Contains(seat.SeatId));
+
+        return await mediator.Send(command with { seats = snapshotSeats }, cancellationToken);
     }
 
     public static async Task<Results<Ok<string>, BadRequest<string>>> ChangeToAwaitingPaymentAsync(SetAwaitingPaymentBookingStatusCommand command, IMediator mediator)
@@ -63,7 +87,7 @@ public static class BookingApi
             return TypedResults.BadRequest($"Validation seat reservation failed - ReservationId: {request.reservationId}");
         }
 
-        // Lấy dữ liệu thật từ seat service
+        // Lấy dữ liệu từ seat service
         var bookingItems = validation.SeatIds.Select(seatId => new SeatItem
         {
             ShowtimeId = validation.ShowtimeId,

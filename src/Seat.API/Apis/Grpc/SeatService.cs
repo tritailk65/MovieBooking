@@ -15,6 +15,13 @@ public class SeatService(
             logger.LogDebug("Begin ValidationReservation call from method {Method} for reservation id {Id}", context.Method, request.ReservationId);
         }
 
+        // TODO: Booking Service call this to make sure the list of seat is available and can checkout, so:
+        // - Check ReservationId, UserId
+        // - Check lock, userlock, reamainingSecond, calculate price, change status from Active to PreparedForPayment
+        // - Increase remainingSecond if it not enough for payment phase
+        // - Return Immutable snapshot for Saga Begin
+
+
         var command = new ValidationReservationCommand(request.ShowtimeId, request.ReservationId, request.UserId);
         var result = await mediator.Send(command);
 
@@ -37,6 +44,8 @@ public class SeatService(
 
         return response;
     }
+
+    // TODO: Create new Function for get snapshot Seats for draft (by UserId)
 
     //[Authorize(Policy = "Permission:seat.write")]
     public override async Task<ReleaseSeatReservationResponse> ReleaseSeatReservation(ReleaseSeatReservationRequest request, ServerCallContext context)

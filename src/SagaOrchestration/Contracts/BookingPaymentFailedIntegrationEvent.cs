@@ -5,9 +5,9 @@ public record BookingPaymentFailedIntegrationEvent : IntegrationEvent
     public int BookingId {get; }
     public int ShowtimeId {get;}
     public string UserId {get;}
-    public string ReservationId {get;}
+    public Guid ReservationId {get;}
 
-    public BookingPaymentFailedIntegrationEvent(int bookingId, int showtimeId, string userId, string reservationId)
+    public BookingPaymentFailedIntegrationEvent(int bookingId, int showtimeId, string userId, Guid reservationId)
     {
         BookingId = bookingId;
         ShowtimeId = showtimeId;

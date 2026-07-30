@@ -62,7 +62,6 @@ public class Booking : Entity, IAggregateRoot
             throw new BookingDomainException("Reservation id is required");
         }
 
-
         UserId = userId;
         ShowtimeId = showtimeId;
         ReservationId = reservationId;

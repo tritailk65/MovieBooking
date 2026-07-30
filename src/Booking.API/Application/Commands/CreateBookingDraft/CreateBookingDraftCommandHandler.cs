@@ -1,7 +1,3 @@
-using BookingService.API.Application.Models;
-using BookingService.Domain.AggregateModel.BookingAggregates;
-using MediatR;
-
 namespace BookingService.API.Application.Commands.CreateBookingDraft;
 
 public class CreateBookingDraftCommandHandler : IRequestHandler<CreateBookingDraftCommand, BookingDraftDto>
@@ -28,8 +24,7 @@ public class CreateBookingDraftCommandHandler : IRequestHandler<CreateBookingDra
             return new BookingDraftDto()
             {
                 Seats = booking.BookingItems.Select(bi => new SeatItem
-                {
-                    
+                {            
                     ShowtimeId = bi.Showtime,
                     SeatId = bi.SeatId,
                     BasePrice = bi.BasePrice
