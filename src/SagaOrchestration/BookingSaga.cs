@@ -14,12 +14,16 @@ public class BookingSaga : SagaStateMachineInstance
     public int ReservationVersion { get; set; }
     public DateTime PreparedUntil { get; set; }
     public string? PaymentId { get; set; }
+    public DateTime Duration  { get; set; }
+    public Guid? PendingPaymentExpirationTokenId { get; set; }
 
     public bool PaymentCaptured { get; set; }
     public bool SeatsConfirmed { get; set; }
     public bool BookingPaid { get; set; }
     public bool PaymentRefunded { get; set; }
+
     public bool BookingCancelled { get; set; }
+    public bool BookingExpired {get; set;}
     public bool ReservationReleased { get; set; }
     public string? FailureReason { get; set; }
 

@@ -1,4 +1,4 @@
-namespace SagaOrchestration;
+namespace SagaOrchestration.Contracts;
 
 public record BookingStatusChangedToAwaitingPaymentIntegrationEvent : IntegrationEvent
 {

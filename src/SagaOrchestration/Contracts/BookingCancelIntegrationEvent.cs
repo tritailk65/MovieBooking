@@ -1,4 +1,4 @@
-namespace SagaOrchestration.Contract;
+namespace SagaOrchestration.Contracts;
 
 public record BookingCancelIntegrationEvent : IntegrationEvent
 {

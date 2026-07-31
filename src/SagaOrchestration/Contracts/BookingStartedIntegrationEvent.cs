@@ -1,5 +1,4 @@
-namespace SagaOrchestration.Contract;
-
+namespace SagaOrchestration.Contracts;
 public record BookingStartedIntegrationEvent : IntegrationEvent
 {
     public int BookingId {get; set;}
