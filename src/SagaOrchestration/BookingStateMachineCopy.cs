@@ -20,8 +20,7 @@ public sealed class BookingStateMachineCopy : MassTransitStateMachine<BookingSag
     public State CompensationFailed { get; private set; } = null!;
     public State CancellationFailed { get; private set; } = null!;
     public State CompletingBooking { get; private set; } = null!;
-    public State Compensating { get; private set; } = null!;
-    public State CompletionFailed { get; private set; } = null!;
+    public State Compensating { get; private set; } = null!; 
 
     public Schedule<BookingSaga, BookingPendingPaymentExpiredIntegrationEvent> BookingScheduleExpired { get; private set; } = null!;
     
@@ -43,19 +42,24 @@ public sealed class BookingStateMachineCopy : MassTransitStateMachine<BookingSag
     public Event<BookingCancellationRequestedIntegrationEvent> BookingCancellationRequest { get; private set; } = null!;
     public Event<SeatHoldExtensionFailedIntegrationEvent> SeatHoldExtensionFailed { get; private set; } = null!;
     public Event<SeatHoldExtensionTimedOutIntegrationEvent> SeatHoldExtensionTimedOut { get; private set; } = null!;
-
     public Event<PaymentProviderConfirmedPaidIntegrationEvent> ProviderConfirmPaid { get; private set; } = null!;
     public Event<PaymentProviderConfirmedUnpaidIntegrationEvent> ProviderConfirmUnpaid  { get; private set; } = null!;
     public Event<SeatHoldDeadlineReachedIntegrationEvent> SeatHoldDeadlineReached { get; private set; } = null!;
     public Event<PaymentRefundedIntegrationEvent> PaymentRefunded { get; private set; } = null!;
     public Event<LatePaymentSuccededIntegrationEvent> LatePaymentSucceded { get; private set; } = null!;
     public Event<BookingStatusChangedToExpiredIntegrationEvent> BookingExpired { get; private set; } = null!;
+    public Event<SeatHoldDeadlineReachedIntegrationEvent> SeatHoldExpired  {get; private set; } = null!;
 
+    public Event<Fault<ReserveSeatsCommand>> ReserveSeatFault { get; private set; } = null!;
     public Event<Fault<MarkBookingPaidCommand>> BookingStatusChangedPaidFaulted { get; private set; } = null!;
     public Event<Fault<ExtendSeatHoldCommand>> SeatHoldExtensionFault { get; private set; } = null!;
     public Event<Fault<ReleaseSeatReservationCommand>> ReleaseReservationFaulted { get; private set; } = null!;
     public Event<Fault<RefundPaymentCommand>> RefundPaymentFaulted { get; private set; } = null!;
     public Event<Fault<CancelBookingCommand>> CancelBookingFaulted { get; private set; } = null!;
+    public Event<Fault<MarkBookingExpiredCommand>> MarkBookingExpiredFaulted { get; private set; } = null!;
+    public Event<Fault<RequestPaymentCommand>> RequestPaymentFaulted { get; private set; } = null!;
+    public Event<Fault<ConfirmSeatReservationCommand>> ConfirmSeatReservationFaulted { get; private set; } = null!;
+
 
     public BookingStateMachineCopy(ILogger<BookingStateMachineCopy> logger)
     {
@@ -90,9 +94,9 @@ public sealed class BookingStateMachineCopy : MassTransitStateMachine<BookingSag
                 .TransitionTo(ReservingSeat));
 
         During(ReservingSeat,
-            When(SeatReservationHeld)
+            When(SeatReservationHeld)   // Giữ ghế thành công
                 .Then(LogSagaState)
-                .Schedule(BookingScheduleExpired, context => context.Init<BookingPendingPaymentExpiredIntegrationEvent>(
+                .Schedule(BookingScheduleExpired, context => context.Init<BookingPendingPaymentExpiredIntegrationEvent>(    // Tạo timeout 10 phút chờ người dùng pending
                             new
                             {
                                 context.Saga.ReservationId,
@@ -107,8 +111,15 @@ public sealed class BookingStateMachineCopy : MassTransitStateMachine<BookingSag
                 .Publish(CreateReleaseReservationCommand)
                 .TransitionTo(Cancelling),
 
-            When(SeatReservationTimedOut)  
+            When(SeatReservationTimedOut)  // Quá thời gian kiểm tra giữ ghế
                 .Then(context => context.Saga.FailureReason = "Seat reservation timed out")
+                .Then(LogSagaState)
+                .Publish(CreateCancelBookingCommand)
+                .Publish(CreateReleaseReservationCommand)
+                .TransitionTo(Cancelling),
+
+            When(ReserveSeatFault)
+                .Then(context => SetFailure(context.Saga, FirstFaultMessage(context.Message)))
                 .Then(LogSagaState)
                 .Publish(CreateCancelBookingCommand)
                 .Publish(CreateReleaseReservationCommand)
@@ -116,7 +127,7 @@ public sealed class BookingStateMachineCopy : MassTransitStateMachine<BookingSag
         );
 
         During(PendingPayment,
-            When(BookingScheduleExpired.Received)   // Khi nhan duoc mesage expire
+            When(BookingScheduleExpired.Received)   // Khi nhan duoc mesage expire (chờ người dùng bấm thanh toán)
                 .Then(context => context.Saga.FailureReason = "Pending payment expired after 10 minutes")
                 .Publish(context => new MarkBookingExpiredCommand(
                     context.Saga.ReservationId,
@@ -124,19 +135,18 @@ public sealed class BookingStateMachineCopy : MassTransitStateMachine<BookingSag
                 .Publish(CreateReleaseReservationCommand)
                 .TransitionTo(Expiring),
 
-            When(PaymentRequested)  // người dùng đồng ý pay
+            When(PaymentRequested)      // Booking xong việc, payment bắt đầu xử lý 
                 .Unschedule(BookingScheduleExpired) 
                 .Then(LogSagaState)
                 .Publish(CreateExtendSeatHoldCommand)
-                .TransitionTo(ExtendingSeatHold),    // Mở rộng thời gian giữ ghế
+                .TransitionTo(ExtendingSeatHold),    // Thêm thời gian giữ ghế, nên lớn hơn thời gian payment provider timeout
             
-            When(BookingCancellationRequest)    // User cancel
+            When(BookingCancellationRequest)    // User cancel booking
                 .Unschedule(BookingScheduleExpired) 
                 .Then(LogSagaState)
                 .Publish(CreateCancelBookingCommand)
                 .Publish(CreateReleaseReservationCommand)
-                .TransitionTo(Cancelling)
-            
+                .TransitionTo(Cancelling)        
         );
 
         During(ExtendingSeatHold,
@@ -159,10 +169,13 @@ public sealed class BookingStateMachineCopy : MassTransitStateMachine<BookingSag
                 .Then(context => context.Saga.FailureReason = "Seat hold extension timed out")
                 .Then(LogSagaState)
                 .Publish(CreateCancelBookingCommand)
+                .Publish(CreateReleaseReservationCommand)
                 .TransitionTo(Cancelling),
 
             When(SeatHoldExtensionFault)
                 .Then(context => SetFailure(context.Saga, FirstFaultMessage(context.Message)))
+                .Publish(CreateReleaseReservationCommand)
+                .Publish(CreateCancelBookingCommand)
                 .TransitionTo(Cancelling)
         );
 
@@ -189,15 +202,20 @@ public sealed class BookingStateMachineCopy : MassTransitStateMachine<BookingSag
                 .Publish(CreateReleaseReservationCommand)
                 .TransitionTo(Cancelling),
 
-            When(PaymentTimedOut)
+            When(PaymentTimedOut)   // Payment provider timeout
                 .Then(context => context.Saga.FailureReason = "Payment timed out")
                 .Then(LogSagaState)
-                .TransitionTo(ReconcilingPayment)
+                .TransitionTo(ReconcilingPayment),
 
+            When(RequestPaymentFaulted)
+                .Then(context => SetFailure(context.Saga, FirstFaultMessage(context.Message)))
+                .Publish(CreateReleaseReservationCommand)
+                .Publish(CreateCancelBookingCommand)
+                .TransitionTo(Cancelling)
         );
 
         During(ReconcilingPayment,
-            When(ProviderConfirmPaid)   // Lưu thông tin thanh toán vào saga
+            When(ProviderConfirmPaid)  
                 .Then(context =>
                 {
                     context.Saga.PaymentId = context.Message.PaymentId;
@@ -211,6 +229,22 @@ public sealed class BookingStateMachineCopy : MassTransitStateMachine<BookingSag
                     context.Saga.UserId,
                     context.Saga.ReservationVersion))
                 .TransitionTo(ConfirmingSeats),
+
+            When(SeatHoldExpired)
+                .Then(LogSagaState)
+                .TransitionTo(ResolvingUnknownPayment),
+            
+            When(ProviderConfirmUnpaid) // Third-party xác nhận chưa thanh toán
+                .Then(LogSagaState)
+                .Publish(CreateCancelBookingCommand)    // Cancel booking
+                .Publish(CreateReleaseReservationCommand)   // Release Seat
+                .TransitionTo(Cancelling)
+        );
+
+        During(ResolvingUnknownPayment,
+            When(LatePaymentSucceded)
+                .Then(LogSagaState)
+                .TransitionTo(RefundingLatePayment),
 
             When(ProviderConfirmUnpaid) // Third-party xác nhận chưa thanh toán
                 .Then(LogSagaState)
@@ -243,10 +277,16 @@ public sealed class BookingStateMachineCopy : MassTransitStateMachine<BookingSag
                 .Publish(CreateRefundPaymentCommand)
                 .Publish(CreateCancelBookingCommand)
                 .Publish(CreateReleaseReservationCommand)
+                .TransitionTo(Compensating),
+
+            When(ConfirmSeatReservationFaulted)
+                .Then(context => SetFailure(context.Saga, FirstFaultMessage(context.Message)))
+                .Publish(CreateReleaseReservationCommand)
+                .Publish(CreateCancelBookingCommand)
+                .Publish(CreateRefundPaymentCommand)
                 .TransitionTo(Compensating)
         );
 
-        // Check lại CompletionFailed
         During(CompletingBooking,
             When(BookingPaid)
                 .Then(context =>
@@ -254,7 +294,7 @@ public sealed class BookingStateMachineCopy : MassTransitStateMachine<BookingSag
                     context.Saga.BookingPaid = true;
                     MarkCompleted(context.Saga);
                 })
-                .Then(LogSagaState)
+                .Then(LogSagaState)              
                 .Finalize(),
 
             When(BookingStatusChangedPaidFaulted)
@@ -263,8 +303,10 @@ public sealed class BookingStateMachineCopy : MassTransitStateMachine<BookingSag
                     context.Saga.FailureReason = FirstFaultMessage(context.Message);
                     context.Saga.UpdatedAt = DateTime.UtcNow;
                 })
-                .Then(LogSagaState)
-                .TransitionTo(CompletionFailed)
+                .Publish(CreateReleaseReservationCommand)
+                .Publish(CreateCancelBookingCommand)
+                .Publish(CreateRefundPaymentCommand)
+                .TransitionTo(Compensating)
         );
 
         During(RefundingLatePayment,
@@ -279,8 +321,6 @@ public sealed class BookingStateMachineCopy : MassTransitStateMachine<BookingSag
                         .Finalize())        
         );
 
-
-        // Dead state -->
         During(ResolvingUnknownPayment,
             When(SeatHoldDeadlineReached)   // Seat hết hạn 
                 .Then(LogSagaState)
@@ -309,7 +349,12 @@ public sealed class BookingStateMachineCopy : MassTransitStateMachine<BookingSag
                     context => ExpirationCompleted(context.Saga),
                     completed => completed
                         .Then(context => MarkCompleted(context.Saga))
-                        .Finalize())
+                        .Finalize()),
+
+            When(MarkBookingExpiredFaulted)
+                .Then(context => SetFailure(context.Saga, FirstFaultMessage(context.Message)))
+                .Publish(CreateReleaseReservationCommand)
+                .TransitionTo(Cancelling)
         );
 
         During(Compensating,
@@ -321,6 +366,7 @@ public sealed class BookingStateMachineCopy : MassTransitStateMachine<BookingSag
                     completed => completed
                         .Then(context => MarkCompleted(context.Saga))
                         .Finalize()),
+
             When(BookingCancelled)
                 .Then(context => context.Saga.BookingCancelled = true)
                 .Then(LogSagaState)
@@ -406,12 +452,16 @@ public sealed class BookingStateMachineCopy : MassTransitStateMachine<BookingSag
         Event(() => BookingExpired, x => x.CorrelateById(context => context.Message.ReservationId));
         Event(() => SeatHoldExtensionFailed, x => x.CorrelateById(context => context.Message.ReservationId));
         Event(() => SeatHoldExtensionTimedOut, x => x.CorrelateById(context => context.Message.ReservationId));
+        Event(() => SeatHoldExpired, x => x.CorrelateById(context => context.Message.ReservationId));
 
+        Event(() => ReserveSeatFault, x => x.CorrelateById(context => context.Message.Message.ReservationId));
         Event(() => BookingStatusChangedPaidFaulted, x => x.CorrelateById(context => context.Message.Message.ReservationId));
         Event(() => ReleaseReservationFaulted, x => x.CorrelateById(context => context.Message.Message.ReservationId));
         Event(() => RefundPaymentFaulted, x => x.CorrelateById(context => context.Message.Message.ReservationId));
         Event(() => CancelBookingFaulted, x => x.CorrelateById(context => context.Message.Message.ReservationId));
+        Event(() => RequestPaymentFaulted, x => x.CorrelateById(context => context.Message.Message.ReservationId));
         Event(() => SeatHoldExtensionFault, x => x.CorrelateById(context => context.Message.Message.ReservationId));
+        Event(() => ConfirmSeatReservationFaulted, x => x.CorrelateById(context => context.Message.Message.ReservationId));
     }
 
     private void InitializeSaga(BehaviorContext<BookingSaga, BookingStatusChangedToSubmittedIntegrationEvent> context)
