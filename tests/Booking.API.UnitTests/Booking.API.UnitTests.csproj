@@ -16,6 +16,7 @@
     <PackageReference Include="NUnit.Analyzers"/>
     <PackageReference Include="NUnit3TestAdapter"/>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection"/>
+    <PackageReference Include="MassTransit.Quartz" />
   </ItemGroup>
 
   <ItemGroup>

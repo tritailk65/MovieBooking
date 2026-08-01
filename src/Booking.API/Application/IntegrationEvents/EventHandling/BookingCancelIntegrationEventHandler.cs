@@ -1,6 +1,5 @@
 
-using BookingService.API.Application.Commands.CancelBooking;
-using SagaOrchestration.Contract;
+using SagaOrchestration.Contracts;
 using CancelBookingApplicationCommand = BookingService.API.Application.Commands.CancelBooking.CancelBookingCommand;
 
 namespace BookingService.API.Application.IntegrationEvents.EventHandling;

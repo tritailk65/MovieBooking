@@ -2,6 +2,7 @@ namespace Orchestration.Tests.NUnit;
 
 using MassTransit;
 using Microsoft.Extensions.DependencyInjection;
+using Quartz;
 
 public static class BookingSagaOrchestrationConfigurationExtension
 {
@@ -10,9 +11,15 @@ public static class BookingSagaOrchestrationConfigurationExtension
         Action<IBusRegistrationConfigurator>? configure = null)
     {
         services
+            .AddQuartz(x =>
+            {
+                x.UseMicrosoftDependencyInjectionJobFactory();
+            })
             .AddMassTransitTestHarness(x =>
             {
                 x.SetKebabCaseEndpointNameFormatter();
+
+                x.AddQuartzConsumers();
 
                 x.AddPublishMessageScheduler();
 

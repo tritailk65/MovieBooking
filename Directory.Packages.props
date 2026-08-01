@@ -100,8 +100,8 @@
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.4" />
     <PackageVersion Include="MassTransit" Version="8.4.1" />
-    <PackageVersion Include="MassTransit.EntityFrameworkCore" Version="8.0.14" />    
-
+    <PackageVersion Include="MassTransit.EntityFrameworkCore" Version="8.4.1" />
+    <PackageVersion Include="MassTransit.Quartz" Version="8.4.1" />
     <PackageVersion Include="NUnit"  Version="4.3.2"/>
     <PackageVersion Include="NUnit.Analyzers" Version="4.7.0"/>
     <PackageVersion Include="NUnit3TestAdapter" Version="5.0.0"/>

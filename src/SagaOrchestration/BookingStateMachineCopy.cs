@@ -44,7 +44,6 @@ public sealed class BookingStateMachineCopy : MassTransitStateMachine<BookingSag
     public Event<SeatHoldExtensionTimedOutIntegrationEvent> SeatHoldExtensionTimedOut { get; private set; } = null!;
     public Event<PaymentProviderConfirmedPaidIntegrationEvent> ProviderConfirmPaid { get; private set; } = null!;
     public Event<PaymentProviderConfirmedUnpaidIntegrationEvent> ProviderConfirmUnpaid  { get; private set; } = null!;
-    public Event<SeatHoldDeadlineReachedIntegrationEvent> SeatHoldDeadlineReached { get; private set; } = null!;
     public Event<PaymentRefundedIntegrationEvent> PaymentRefunded { get; private set; } = null!;
     public Event<LatePaymentSuccededIntegrationEvent> LatePaymentSucceded { get; private set; } = null!;
     public Event<BookingStatusChangedToExpiredIntegrationEvent> BookingExpired { get; private set; } = null!;
@@ -96,12 +95,10 @@ public sealed class BookingStateMachineCopy : MassTransitStateMachine<BookingSag
         During(ReservingSeat,
             When(SeatReservationHeld)   // Giữ ghế thành công
                 .Then(LogSagaState)
-                .Schedule(BookingScheduleExpired, context => context.Init<BookingPendingPaymentExpiredIntegrationEvent>(    // Tạo timeout 10 phút chờ người dùng pending
-                            new
-                            {
-                                context.Saga.ReservationId,
-                                context.Saga.BookingId
-                            }))
+                .Schedule(BookingScheduleExpired,
+                    context => new BookingPendingPaymentExpiredIntegrationEvent(
+                        context.Saga.ReservationId,
+                        context.Saga.BookingId))
                 .TransitionTo(PendingPayment),
 
             When(SeatReservationFailed) // giữ ghế fail
@@ -322,7 +319,7 @@ public sealed class BookingStateMachineCopy : MassTransitStateMachine<BookingSag
         );
 
         During(ResolvingUnknownPayment,
-            When(SeatHoldDeadlineReached)   // Seat hết hạn 
+            When(SeatHoldExpired)   // Seat hết hạn 
                 .Then(LogSagaState)
                 .Publish(CreateCancelBookingCommand)
                 .Publish(CreateReleaseReservationCommand)
@@ -446,13 +443,14 @@ public sealed class BookingStateMachineCopy : MassTransitStateMachine<BookingSag
         Event(() => BookingCancellationRequest, x => x.CorrelateById(context => context.Message.ReservationId));
         Event(() => ProviderConfirmPaid, x => x.CorrelateById(context => context.Message.ReservationId));
         Event(() => ProviderConfirmUnpaid, x => x.CorrelateById(context => context.Message.ReservationId));
-        Event(() => SeatHoldDeadlineReached, x => x.CorrelateById(context => context.Message.ReservationId));
         Event(() => PaymentRefunded, x => x.CorrelateById(context => context.Message.ReservationId));
         Event(() => LatePaymentSucceded, x => x.CorrelateById(context => context.Message.ReservationId));
         Event(() => BookingExpired, x => x.CorrelateById(context => context.Message.ReservationId));
         Event(() => SeatHoldExtensionFailed, x => x.CorrelateById(context => context.Message.ReservationId));
         Event(() => SeatHoldExtensionTimedOut, x => x.CorrelateById(context => context.Message.ReservationId));
         Event(() => SeatHoldExpired, x => x.CorrelateById(context => context.Message.ReservationId));
+        Event(() => PaymentRequested, x => x.CorrelateById(context => context.Message.ReservationId));
+
 
         Event(() => ReserveSeatFault, x => x.CorrelateById(context => context.Message.Message.ReservationId));
         Event(() => BookingStatusChangedPaidFaulted, x => x.CorrelateById(context => context.Message.Message.ReservationId));
@@ -462,6 +460,8 @@ public sealed class BookingStateMachineCopy : MassTransitStateMachine<BookingSag
         Event(() => RequestPaymentFaulted, x => x.CorrelateById(context => context.Message.Message.ReservationId));
         Event(() => SeatHoldExtensionFault, x => x.CorrelateById(context => context.Message.Message.ReservationId));
         Event(() => ConfirmSeatReservationFaulted, x => x.CorrelateById(context => context.Message.Message.ReservationId));
+        Event(() => MarkBookingExpiredFaulted, x => x.CorrelateById(context => context.Message.Message.ReservationId));
+
     }
 
     private void InitializeSaga(BehaviorContext<BookingSaga, BookingStatusChangedToSubmittedIntegrationEvent> context)
