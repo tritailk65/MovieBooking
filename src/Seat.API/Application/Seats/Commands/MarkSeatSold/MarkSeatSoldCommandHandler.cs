@@ -6,20 +6,22 @@ public class MarkSeatSoldCommandHandler : IRequestHandler<MarkSeatSoldCommand, b
     private readonly IRedisLockService _lockService;
     private readonly ISeatRepository _seatRepo;
     private readonly ILogger<MarkSeatSoldCommandHandler> _logger;
-    private readonly IEventBus _eventBus;
+    // private readonly IEventBus _eventBus;
+    // Seat.API now uses MassTransit; keeping the legacy abstraction here made
+    // MediatR validation fail before the application could start.
 
     public MarkSeatSoldCommandHandler(
         IConnectionMultiplexer redis,
         ILogger<MarkSeatSoldCommandHandler> logger,
         IRedisLockService lockService,
-        ISeatRepository seatRepo,
-        IEventBus eventBus)
+        ISeatRepository seatRepo)
+        // IEventBus eventBus)
     {
         _redis = redis;
         _logger = logger;
         _lockService = lockService;
         _seatRepo = seatRepo;
-        _eventBus = eventBus;
+        // _eventBus = eventBus;
     }
 
     public async Task<bool> Handle(MarkSeatSoldCommand request, CancellationToken cancellationToken)
@@ -35,8 +37,12 @@ public class MarkSeatSoldCommandHandler : IRequestHandler<MarkSeatSoldCommand, b
 
             if (seatLockData is null)
             {
-                var bookingCancel = new BookingCanceledIntegrationEvent(request.showtimeId, request.userId);
-                await _eventBus.PublishAsync(bookingCancel);
+                // var bookingCancel = new BookingCanceledIntegrationEvent(request.showtimeId, request.userId);
+                // await _eventBus.PublishAsync(bookingCancel);
+                _logger.LogWarning(
+                    "Cannot mark seat {SeatId} sold for showtime {ShowtimeId}: seat lock was not found",
+                    request.seatId,
+                    request.showtimeId);
                 return false;
             }
 

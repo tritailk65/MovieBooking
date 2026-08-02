@@ -10,6 +10,15 @@
 *.userosscache
 *.sln.docstates
 *.env
+.env
+.env.*
+!deploy/environments/.env.*.example
+
+# TLS certificates and private keys are deployment secrets.
+deploy/tls/**/*.crt
+deploy/tls/**/*.key
+deploy/tls/**/*.pfx
+deploy/tls/**/*.pem
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs

@@ -51,3 +51,15 @@ jobs:
 
       - name: Build Payment image
         run: docker build -t moviebooking-payment:${{ github.sha }} -f src/Payment.API/Dockerfile .
+
+      - name: Build Gateway image
+        run: docker build -t moviebooking-gateway:${{ github.sha }} -f src/Gateway.API/Dockerfile .
+
+      - name: Validate development Compose configuration
+        run: docker compose config --quiet
+
+      - name: Validate staging deployment configuration
+        run: docker compose --env-file deploy/environments/.env.staging.example -f docker-compose.deploy.yml config --quiet
+
+      - name: Validate production deployment configuration
+        run: docker compose --env-file deploy/environments/.env.production.example -f docker-compose.deploy.yml config --quiet

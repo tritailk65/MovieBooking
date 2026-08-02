@@ -33,6 +33,7 @@ public static class SeatEndpoints
         //.RequireAuthorization(PermissionPolicies.Require("seat.read"))
         .WithName("GetSeatReservation")
         .Produces<IEnumerable<SeatReservation>>(StatusCodes.Status200OK)
+        //.Produces<SeatReservation>(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest);
         #endregion
 

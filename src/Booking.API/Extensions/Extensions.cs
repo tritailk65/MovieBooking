@@ -127,7 +127,12 @@ public static class Extensions
 
         services.AddGrpcClient<SeatGrpc.SeatGrpcClient>(options =>
             {
-                var seatUrl = builder.Configuration["Grpc:SeatUrl"] ?? "http://seat-api";
+                // var seatUrl = builder.Configuration["Grpc:SeatUrl"] ?? "http://seat-api";
+                // Aspire service discovery prefers HTTPS, where Kestrel can negotiate
+                // HTTP/2 for gRPC while still accepting HTTP/1.1 REST and health calls.
+                // Docker Compose continues to override Grpc:SeatUrl with its dedicated
+                // clear-text HTTP/2 endpoint on port 8081.
+                var seatUrl = builder.Configuration["Grpc:SeatUrl"] ?? "https+http://seat-api";
                 options.Address = new Uri(seatUrl);
             });
             // .AddServiceDiscovery();

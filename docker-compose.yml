@@ -125,5 +125,35 @@ services:
       rabbitmq:
         condition: service_healthy
 
+  gateway-api:
+    build:
+      context: .
+      dockerfile: src/Gateway.API/Dockerfile
+    image: moviebooking-gateway:local
+    container_name: moviebooking-gateway-api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_FORWARDEDHEADERS_ENABLED: "false"
+      ASPNETCORE_URLS: http://+:8080
+      Https__RedirectAtGateway: "false"
+      AllowedHosts: localhost;127.0.0.1;10.0.2.2;host.docker.internal
+      ForwardedHeaders__KnownIPNetworks__0: 172.16.0.0/12
+      ForwardedHeaders__AllowedHosts__0: localhost
+      ForwardedHeaders__AllowedHosts__1: 127.0.0.1
+      ForwardedHeaders__AllowedHosts__2: 10.0.2.2
+      ForwardedHeaders__AllowedHosts__3: host.docker.internal
+      ReverseProxy__Clusters__catalog__Destinations__catalog-api__Address: http://catalog-api:8080
+      ReverseProxy__Clusters__seat__Destinations__seat-api__Address: http://seat-api:8080
+      ReverseProxy__Clusters__booking__Destinations__booking-api__Address: http://booking-api:8080
+    ports:
+      - "8080:8080"
+    depends_on:
+      catalog-api:
+        condition: service_started
+      seat-api:
+        condition: service_started
+      booking-api:
+        condition: service_started
+
 volumes:
   postgres-data:
