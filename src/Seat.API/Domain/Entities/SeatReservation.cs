@@ -9,6 +9,13 @@ public class SeatReservation
     public DateTime ExpiresAt { get; set; }
     public int RemainingSeconds {get; set;} //Cho UI count down, gần hết thì báo user gia hạn thêm thời gian cho giao dịch
     public decimal BasePrice {get; set;}
+    public int ReservationReleased {get; set;}
+    public int ReservationVersion {get; init ;} 
+
+    public void IncreaseReservationVersion()
+    {
+        this.ReservationReleased += 1;
+    }
 
     public SeatReservation()
     {

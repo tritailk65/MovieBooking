@@ -26,6 +26,8 @@ public class Booking : Entity, IAggregateRoot
 
     public Guid ReservationId {get; private set;}
 
+    public int ReservationVersion {get; private set;}
+
     public static Booking NewDraft()
     {
         var booking = new Booking{ _isDraft = true};

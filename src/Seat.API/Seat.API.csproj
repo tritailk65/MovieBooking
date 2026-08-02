@@ -15,10 +15,14 @@
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
           <PrivateAssets>all</PrivateAssets>
       </PackageReference>
+
+    <PackageReference Include="MassTransit.RabbitMQ" />
   </ItemGroup>
     
   <ItemGroup>
+    <ProjectReference Include="../EventBus/EventBus.csproj" />
     <ProjectReference Include="../EventBusRabbitMq/EventBusRabbitMq.csproj" />
+    <ProjectReference Include="../SagaOrchestration/SagaOrchestration.csproj" />
     <ProjectReference Include="../ServiceDefaults/ServiceDefaults.csproj" />
   </ItemGroup>
 

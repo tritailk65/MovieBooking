@@ -93,6 +93,7 @@ public class ValidationReservationCommandHandler : IRequestHandler<ValidationRes
         // thời gian còn lại để thanh toán
         // để hỏi người dùng trong trường hợp cần thêm thời gian để thanh toán 
         seatReservation.RemainingSeconds = remainingSeconds;
+        seatReservation.IncreaseReservationVersion();
 
         return seatReservation;
     }

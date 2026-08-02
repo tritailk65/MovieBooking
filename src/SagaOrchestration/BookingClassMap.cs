@@ -1,5 +1,5 @@
 
-namespace Shared.Infrastructure.OrderSaga;
+namespace SagaOrchestration;
 
 using MassTransit;
 using Microsoft.EntityFrameworkCore;

@@ -1,4 +1,4 @@
-global using EventBus.Abstractions;
+
 global using Seat.API.Domain.Interfaces;
 global using Seat.API.IntegrationEvents.Events;
 global using Seat.API.Domain.Entities;
@@ -17,4 +17,4 @@ global using Seat.API.Application.Seats.Commands.MarkSeatSold;
 global using Seat.API.Application.Seats.GetShowtimeSeats;
 global using Seat.API.Extensions;
 global using Seat.API.Grpc;
-global using ServiceDefaults;
+global using EventBus.Abstractions;

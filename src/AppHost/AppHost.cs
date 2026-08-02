@@ -15,6 +15,7 @@ var postgres = builder.AddPostgres("postgres")
 
 var catalogDb = postgres.AddDatabase("catalogdb");
 var bookingDb = postgres.AddDatabase("bookingdb");
+var sagaDb = postgres.AddDatabase("sagadb");
 
 var cache = builder.AddRedis("redis")
             .WithRedisInsight(insight => insight
@@ -47,6 +48,7 @@ cache.WithParentRelationship(SeatApi);
 var bookingApi = builder.AddProject<Projects.Booking_API>("booking-api")
     .WithReference(rabbitMq).WaitFor(rabbitMq)
     .WithReference(bookingDb).WaitFor(bookingDb)
+    .WithReference(sagaDb).WaitFor(sagaDb)
     .WithReference(SeatApi)
     .WaitFor(SeatApi)
     .WithHttpHealthCheck("/health");

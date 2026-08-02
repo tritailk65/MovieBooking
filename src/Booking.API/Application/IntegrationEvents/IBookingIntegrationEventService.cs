@@ -1,4 +1,3 @@
-
 namespace BookingService.API.Application.IntegrationEvents;
 
 using EventBus.Events;

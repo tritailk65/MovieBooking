@@ -1,3 +1,5 @@
+using SagaOrchestration.Contracts;
+
 namespace BookingService.API.Application.DomainEventHandlers;
 
 public class ValidateOrAddBuyerDomainEventHandler : INotificationHandler<BookingStartedDomainEvent>
@@ -37,12 +39,18 @@ public class ValidateOrAddBuyerDomainEventHandler : INotificationHandler<Booking
 
         await _buyerRepository.UnitOfWork.SaveEntitiesAsync(cancellationToken);
 
-        // Event confirm payment method and buyer created or exist 
-        var integrationEvent = new BookingStatusChangedToSubmittedIntegrationEvent(
-            domainEvent.booking.Id, 
-            BookingStatus.Submitted.Name, 
-            domainEvent.userName, 
-            domainEvent.userId);
+        var integrationEvent =
+            new BookingStatusChangedToSubmittedIntegrationEvent(
+                ReservationId: domainEvent.booking.ReservationId,
+                BookingId: domainEvent.booking.Id,
+                ShowtimeId: domainEvent.booking.ShowtimeId,
+                UserId: domainEvent.userId,
+                SeatIds: domainEvent.booking.BookingItems
+                    .Select(x => x.SeatId)
+                    .ToArray(),
+                TotalPrice: domainEvent.booking.GetTotal(),
+                ReservationVersion: domainEvent.booking.ReservationVersion,
+                PreparedUntil: DateTime.Now.AddMinutes(10));
 
         await _integrationEvent.AddAndSaveEventAsync(integrationEvent);
         BookingApiTrace.LogBookingBuyerAndPaymentValidatedOrUpdated(_logger, buyer.Id, domainEvent.booking.Id);

@@ -1,3 +1,5 @@
+using SagaOrchestration.Contracts;
+
 namespace BookingService.API.Application.DomainEventHandlers;
 
 public class BookingStatusChangeToAwaitingPaymentDomainEventHandler : INotificationHandler<BookingAwaitingPaymentDomainEvent>
@@ -26,17 +28,22 @@ public class BookingStatusChangeToAwaitingPaymentDomainEventHandler : INotificat
         var booking = await _bookingRepository.GetByIdAsync(domainEvent.Booking.Id);
         var buyer = await _buyerRepository.FindAsync(booking.UserId);
         
-        var integrationEvent = new BookingStatusChangedToAwaitingPaymentIntegrationEvent(
-            booking.Id, 
-            booking.BookingStatus.Name, 
-            buyer.Name, 
-            buyer.IdentityGuid,
-            booking.ShowtimeId,
-            booking.ReservationId.ToString()
-        );
+        // var integrationEvent = new BookingStatusChangedToAwaitingPaymentIntegrationEvent(
+        //     booking.Id, 
+        //     booking.BookingStatus.Name, 
+        //     buyer.Name, 
+        //     buyer.IdentityGuid,
+        //     booking.ShowtimeId,
+        //     booking.ReservationId.ToString()
+        // );
         
-        // Mở transaction, ghi log và xử lý publish qua TransactionBehavior
-        await _integrationEvent.AddAndSaveEventAsync(integrationEvent);
+        // // Mở transaction, ghi log và xử lý publish qua TransactionBehavior
+        // await _integrationEvent.AddAndSaveEventAsync(integrationEvent);
+
+        var paymentRequest = new PaymentRequestedIntegrationEvent(booking.ReservationId, booking.Id, booking.UserId, booking.GetTotal());
+
+        await _integrationEvent.AddAndSaveEventAsync(paymentRequest);
+
     }
 
 }

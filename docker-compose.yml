@@ -96,6 +96,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__bookingDb: Host=postgres;Port=5432;Database=bookingdb;Username=postgres;Password=postgres
+      ConnectionStrings__sagadb: Host=postgres;Port=5432;Database=sagadb;Username=postgres;Password=postgres
       ConnectionStrings__eventbus: amqp://guest:guest@rabbitmq:5672
       Grpc__SeatUrl: http://moviebooking-seat-api:8081
     ports:

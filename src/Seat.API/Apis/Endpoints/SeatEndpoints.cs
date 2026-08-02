@@ -110,15 +110,15 @@ public static class SeatEndpoints
         //.RequireAuthorization(PermissionPolicies.Require("seat.write"));
         
         // KHi user payment thanh toan thanh cong
-        group.MapPost("/confirm-reservation", async (ConfirmReservationCommand command, IMediator mediator) => {
-            var result = await mediator.Send(command);
+        // group.MapPost("/confirm-reservation", async (ConfirmReservationCommand command, IMediator mediator) => {
+        //     var result = await mediator.Send(command);
 
-            if (result is not null)
-            {
-                return Results.Ok(result);
-            }
-            return Results.Conflict(new {Mesage = "Confirm seat reservation fail"});
-        });
+        //     if (result is not null)
+        //     {
+        //         return Results.Ok(result);
+        //     }
+        //     return Results.Conflict(new {Mesage = "Confirm seat reservation fail"});
+        // });
         //.RequireAuthorization(PermissionPolicies.Require("seat.write"));
 
        #endregion

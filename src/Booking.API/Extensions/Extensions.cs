@@ -1,4 +1,8 @@
+using BookingService.API.Application.IntegrationEvents.Consumers;
 using BookingService.API.Application.IntegrationEvents.EventHandling;
+using MassTransit;
+using Quartz;
+using SagaOrchestration;
 
 namespace BookingService.API.Extensions;
 
@@ -26,8 +30,60 @@ public static class Extensions
         services.AddTransient<IIntegrationEventLogService, IntegrationEventLogService<BookingContext>>();
         services.AddTransient<IBookingIntegrationEventService, BookingIntegrationEventService>();
 
-        builder.AddRabbitMqEventBus("eventbus")
-               .AddEventBusSubscriptions();
+        // builder.AddRabbitMqEventBus("eventbus")
+        //        .AddEventBusSubscriptions();
+
+        var rabbitMq = builder.Configuration.GetConnectionString("eventbus") ?? throw new InvalidOperationException("Missing ConnectionStrings:eventbus");
+
+        var sagaConnection = builder.Configuration.GetConnectionString("sagadb") ?? throw new InvalidOperationException("Missing ConnectionStrings:sagadb");
+
+        services.AddDbContext<BookingSagaContext>(options =>
+        {
+            options.UseNpgsql(sagaConnection, postgres => postgres.MigrationsAssembly(typeof(BookingSagaContext).Assembly.FullName));
+        });
+
+        services.AddQuartz();
+
+        services.AddQuartzHostedService(options =>
+        {
+            options.WaitForJobsToComplete = true;
+        });
+
+        services.AddMassTransit(x =>
+        {
+            x.SetEndpointNameFormatter(new KebabCaseEndpointNameFormatter("booking", false));
+
+            x.AddQuartzConsumers();
+            x.AddPublishMessageScheduler();
+
+            x.AddEntityFrameworkOutbox<BookingSagaContext>(outbox =>
+            {
+                outbox.UsePostgres();
+                outbox.UseBusOutbox();
+            });
+
+            x.AddSagaStateMachine<BookingStateMachine,BookingSaga,BookingSagaDefinition>()
+                .EntityFrameworkRepository(repository =>
+                {
+                    repository.ConcurrencyMode =
+                        ConcurrencyMode.Pessimistic;
+
+                    repository.ExistingDbContext<BookingSagaContext>();
+                    repository.UsePostgres();
+                });
+
+            x.AddConsumer<MarkBookingPaidCommandConsumer>();
+
+
+            x.UsingRabbitMq((context, cfg) =>
+            {
+                cfg.Host(new Uri(rabbitMq));
+
+                cfg.UsePublishMessageScheduler();
+
+                cfg.ConfigureEndpoints(context);
+            });
+        });
 
         // services.AddOptions<SeatServiceAuthenticationOptions>()
         //     .BindConfiguration(SeatServiceAuthenticationOptions.SectionName)

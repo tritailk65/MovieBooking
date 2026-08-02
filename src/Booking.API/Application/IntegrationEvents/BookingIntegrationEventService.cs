@@ -1,14 +1,16 @@
 
+using MassTransit;
+
 namespace BookingService.API.IntegrationEvents;
 
 
 public class BookingIntegrationEventService (
-    IEventBus eventBus,
+    IPublishEndpoint publishEndpoint,
     BookingContext bookingContext,
     IIntegrationEventLogService integrationEventLogService,
     ILogger<BookingIntegrationEventService> logger) : IBookingIntegrationEventService
 {
-    private readonly IEventBus _eventBus = eventBus ?? throw new ArgumentNullException(nameof(eventBus));
+    private readonly IPublishEndpoint _eventBus = publishEndpoint ?? throw new ArgumentNullException(nameof(publishEndpoint));
     private readonly BookingContext _bookingContext = bookingContext ?? throw new ArgumentNullException(nameof(bookingContext));
     private readonly IIntegrationEventLogService _eventLogService = integrationEventLogService ?? throw new ArgumentNullException(nameof(integrationEventLogService));
     private readonly ILogger<BookingIntegrationEventService> _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -25,7 +27,9 @@ public class BookingIntegrationEventService (
             try
             {
                 await _eventLogService.MarkEventAsInProgressAsync(logEvt.EventId);
-                await _eventBus.PublishAsync(logEvt.IntegrationEvent);
+                await _eventBus.Publish(logEvt.IntegrationEvent, logEvt.IntegrationEvent.GetType());
+
+                // await _eventBus.PublishAsync(logEvt.IntegrationEvent);
                 await _eventLogService.MarkEventAsPublishedAsync(logEvt.EventId);
             }
             catch (Exception ex)

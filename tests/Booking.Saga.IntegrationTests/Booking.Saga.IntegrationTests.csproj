@@ -15,6 +15,7 @@
     <PackageReference Include="NUnit.Analyzers" />
     <PackageReference Include="NUnit3TestAdapter" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <PackageReference Include="Microsoft.AspNetCore.TestHost" />
     <PackageReference Include="MassTransit.Quartz" />
 
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />    
@@ -29,6 +30,7 @@
     <ProjectReference Include="../../src/Booking.API/Booking.API.csproj" />
     <ProjectReference Include="../../src/Booking.Infrastructure/Booking.Infrastructure.csproj" />
     <ProjectReference Include="../../src/Catalog.API/Catalog.API.csproj" />
+    <ProjectReference Include="../../src/Payment.API/Payment.API.csproj" />
     <ProjectReference Include="../../src/SagaOrchestration/SagaOrchestration.csproj" />
     <ProjectReference Include="../../src/Seat.API/Seat.API.csproj" />
   </ItemGroup>

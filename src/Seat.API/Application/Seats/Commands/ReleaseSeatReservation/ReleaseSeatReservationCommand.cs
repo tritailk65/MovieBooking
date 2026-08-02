@@ -9,3 +9,5 @@ public record ReleaseSeatReservationCommand
     string userId
 
 ) : IRequest<bool>;
+
+

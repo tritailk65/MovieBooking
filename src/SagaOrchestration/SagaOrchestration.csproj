@@ -11,14 +11,19 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-          <PackageReference Include="MassTransit" />
-          <PackageReference Include="MassTransit.EntityFrameworkCore" />
-          <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />    
+    <PackageReference Include="MassTransit" />
+    <PackageReference Include="MassTransit.EntityFrameworkCore" />
+    <PackageReference Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>
+        runtime; build; native; contentfiles; analyzers; buildtransitive
+      </IncludeAssets>
+    </PackageReference>
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="../IntergrationEventLogEF/IntergrationEventLogEF.csproj" />
   </ItemGroup>
-
 
 </Project>

@@ -1,10 +1,12 @@
-namespace Shared.Infrastructure.OrderSaga;
+namespace SagaOrchestration;
 
 using MassTransit.EntityFrameworkCoreIntegration;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 public class BookingSagaContext : SagaDbContext
 {
+
     public BookingSagaContext(DbContextOptions<BookingSagaContext> options) : base(options)
     {
     }
@@ -12,7 +14,9 @@ public class BookingSagaContext : SagaDbContext
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
-
+        builder.AddInboxStateEntity();
+        builder.AddOutboxMessageEntity();
+        builder.AddOutboxStateEntity();
     }
 
 

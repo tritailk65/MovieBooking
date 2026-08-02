@@ -3,9 +3,14 @@ using Seat.API.Domain.Entities;
 
 namespace Seat.API.Application.Command.ComfirmReservation;
 
-public record ConfirmReservationCommand
-(
-    int showtimeId,
-    string reservationId,   
-    string userId
-) : IRequest<SeatReservation>;
+public record ConfirmSeatReservationApplicationCommand(
+    Guid ReservationId,
+    int BookingId,
+    int ShowtimeId,
+    string UserId,
+    int ReservationVersion) : IRequest<ConfirmSeatReservationResult>;
+
+
+public sealed record ConfirmSeatReservationResult(
+    bool Succeeded,
+    string Reason = "");

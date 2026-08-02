@@ -4,9 +4,9 @@ using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Quartz;
+using SagaOrchestration;
 using Seat.API.Domain.Interfaces;
 using Seat.API.Infrastructure.Redis;
-using Shared.Infrastructure.OrderSaga;
 
 
 namespace Booking.Saga.IntegrationTests;
@@ -40,7 +40,7 @@ public static class BookingSagaIntegrationTestConfigurationExtension
             })
             .AddDbContext<BookingContext>(option =>
             {
-                option.UseNpgsql(catalogConnection, x => x.MigrationsAssembly(typeof(BookingContext).Assembly.FullName));
+                option.UseNpgsql(bookingConnection, x => x.MigrationsAssembly(typeof(BookingContext).Assembly.FullName));
             })
             .AddQuartz(x =>
             {

@@ -2,35 +2,50 @@ namespace Booking.Saga.IntegrationTests;
 
 using BookingService.API;
 using BookingService.API.Application.Commands.CreateBooking;
+using BookingService.API.Application.Commands.SetAwaitingPayment;
+using BookingService.API.Application.IntegrationEvents;
+using BookingService.API.Application.IntegrationEvents.Consumers;
+using BookingService.API.Application.Models;
 using BookingService.API.Infrastructure;
+using BookingService.API.IntegrationEvents;
+using BookingService.Domain.AggregateModel.BookingAggregates;
+using BookingService.Domain.AggregateModel.BuyerAggregate;
 using BookingService.Infrastructure;
+using BookingService.Infrastructure.Repository;
 using Catalog.API;
 using Catalog.API.Application.Showtimes.Commands.CreateShowtime;
 using Catalog.API.Infrastucture;
+using Catalog.API.IntegrationEvents;
 using Catalog.API.IntegrationEvents.Event;
+using IntegrationEventLogEF.Services;
 using MassTransit;
 using MassTransit.Testing;
 using MediatR;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using PaymentService.Api;
+using PaymentService.Api.IntegrationEvents.Consumers;
 using SagaOrchestration;
+using SagaOrchestration.Contracts;
 using Seat.API.Application.Command.LockSeat;
 using Seat.API.Domain.Interfaces;
+using Seat.API.Endpoints;
 using Seat.API.Infrastructure.Redis;
+using Seat.API.IntegrationEvents.Consumer;
 using Seat.API.IntegrationEvents.EventHandlers;
-using Shared.Infrastructure.OrderSaga;
 using StackExchange.Redis;
 
 [TestFixture]
 public class BookingSagaE2ETest
 {
-    private ServiceProvider _provider;
+    private WebApplication _app = null!;
+    private IServiceProvider _provider = null!;
     private ITestHarness _harness;
     private ISagaStateMachineTestHarness<BookingStateMachine, BookingSaga> _sagaHarness = null!;
-    private IMediator _mediator;
     #region Setup and TearDown
 
     [SetUp]
@@ -48,6 +63,8 @@ public class BookingSagaE2ETest
                 //             "../src/Catalog.API"))
             });
 
+        builder.WebHost.UseTestServer();
+
         builder.Configuration.AddInMemoryCollection(
             new Dictionary<string, string?>
             {
@@ -57,13 +74,21 @@ public class BookingSagaE2ETest
         builder.AddRedisClient("redis");
         builder.Services.AddSingleton<ISeatRepository, SeatRedisRepository>();
         builder.Services.AddSingleton<IRedisLockService, RedisLockService>();
+        builder.Services.AddTransient<ShowtimeCreatedIntegrationEventHandler>();
+        builder.Services.AddScoped<ICatalogIntegrationEventService, TestCatalogIntegrationEventService>();
+        builder.Services.AddScoped<IBookingIntegrationEventService, TestBookingIntegrationEventService>();
 
         builder.Services.ConfigureMassTransit(x =>
         {
             x.AddSagaStateMachine<BookingStateMachine, BookingSaga>();
 
-            x.AddConsumer<ShowtimeCreatedIntegrationEvent, ShowtimeCreatedIntegrationEventHandler>();
-             // Add Consumer
+            x.AddConsumer<ConfirmSeatReservationCommandConsumer>();
+            x.AddConsumer<ExtendSeatHoldCommandConsumer>();
+            x.AddConsumer<ReserveSeatsCommandConsumer>();
+
+            x.AddConsumer<MarkBookingPaidCommandConsumer>();
+            x.AddConsumer<RequestPaymentCommandConsumer>();
+            x.AddConsumer<ShowtimeCreatedIntegrationEventConsumer>();
         });
 
         builder.Services.AddScoped<CatalogContextSeed>();
@@ -79,13 +104,25 @@ public class BookingSagaE2ETest
             );
         });
 
-        _provider = builder.Services.BuildServiceProvider(validateScopes: true);
+        builder.Services.AddScoped<IBookingRepository, BookingRepository>();
+        builder.Services.AddScoped<IBuyerRepository, BuyerRepository>();
+
+
+        builder.Services.Configure<PaymentOptions>(options =>
+        {
+            options.PaymentSucceeded = true;
+        });
+
+        _app = builder.Build();
+        _app.MapCatalogApi();
+        _app.MapSeatApi();
+        _provider = _app.Services;
 
         await InitializeDatabasesAsync();
 
-        _harness = _provider.GetTestHarness();
+        await _app.StartAsync();
 
-        await _harness.Start();
+        _harness = _provider.GetTestHarness();
 
         _sagaHarness = _harness.GetSagaStateMachineHarness<BookingStateMachine, BookingSaga>();
     }
@@ -93,8 +130,8 @@ public class BookingSagaE2ETest
     [TearDown]
     public async Task TearDown()
     {
-        await _harness.Stop();
-        await _provider.DisposeAsync();
+        await _app.StopAsync();
+        await _app.DisposeAsync();
     }
 
     private async Task InitializeDatabasesAsync()
@@ -112,7 +149,7 @@ public class BookingSagaE2ETest
         await catalogSeeder.SeedAsync(catalogDb);
 
         var bookingDb = services.GetRequiredService<BookingContext>();
-        await bookingDb.Database.MigrateAsync();
+        await bookingDb.Database.EnsureCreatedAsync();
 
         var bookingSeeder = services.GetRequiredService<BookingContextSeed>();
         await bookingSeeder.SeedAsync(bookingDb);
@@ -148,32 +185,102 @@ public class BookingSagaE2ETest
     #endregion
 
     #region  Helper Function
-    public async Task CreateShowTime()
+    private async Task<SagaPrerequisiteResult> PrepareSagaPrerequisitesAsync(
+        CancellationToken cancellationToken = default)
     {
-
-
+        var apiClient = _app.GetTestClient();
+        var seatRepository = _provider.GetRequiredService<ISeatRepository>();
+        var redisLockService = _provider.GetRequiredService<IRedisLockService>();
         var request = new CreateShowtimeCommand(
             MovieId: 1,
             CinemaId: 2,
             HallId: 3,
-            StartTime: new DateTime(2026, 1, 1, 18, 0, 0),
-            EndTime: new DateTime(2026, 1, 1, 20, 0, 0),
-            BasePrice: 90000m
-        );
+            StartTime: DateTime.UtcNow.AddHours(1),
+            EndTime: DateTime.UtcNow.AddHours(3),
+            BasePrice: 90_000m);
 
-        var response = await client.PostAsJsonAsync("/api/v1/catalog/showtimes", request);
-
-        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-
-        await mediator.Received(1)
-            .Send(Arg.Any<CreateShowtimeCommand>(), Arg.Any<CancellationToken>());
+        return await SagaPrerequisiteApiHelper.CreateShowtimeAndLockSeatsAsync(
+            apiClient,
+            apiClient,
+            seatRepository,
+            redisLockService,
+            request,
+            UserId,
+            seatCount: 1,
+            cancellationToken: cancellationToken);
     }
     #endregion
 
     [Test]
     public async Task E2E_Orchestration_HappyPath()
     {
-        
+        var prerequisite = await PrepareSagaPrerequisitesAsync();
+
+        await using (var scope = _provider.CreateAsyncScope())
+        {
+            var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
+            var seatPrice = prerequisite.TotalPrice / prerequisite.SeatIds.Count;
+            var bookingItems = prerequisite.SeatIds.Select(seatId => new SeatItem
+            {
+                ShowtimeId = prerequisite.ShowtimeId,
+                SeatId = seatId,
+                BasePrice = seatPrice
+            });
+
+            var bookingCreated = await mediator.Send(new CreateBookingCommand(
+                bookingItems,
+                prerequisite.UserId,
+                "Saga E2E User",
+                prerequisite.ShowtimeId,
+                prerequisite.ReservationId));
+
+            Assert.That(bookingCreated, Is.True, "Booking was not created");
+        }
+
+        int bookingId;
+        await using (var scope = _provider.CreateAsyncScope())
+        {
+            var bookingContext = scope.ServiceProvider.GetRequiredService<BookingContext>();
+            bookingId = await bookingContext.Bookings
+                .Where(booking => booking.ReservationId == prerequisite.ReservationId)
+                .Select(booking => booking.Id)
+                .SingleAsync();
+        }
+
+        Assert.That(
+            await _sagaHarness.Exists(prerequisite.ReservationId, state => state.PendingPayment),
+            Is.EqualTo(prerequisite.ReservationId),
+            "Saga did not reach PendingPayment");
+
+        await using (var scope = _provider.CreateAsyncScope())
+        {
+            var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
+            var paymentRequested = await mediator.Send(
+                new SetAwaitingPaymentBookingStatusCommand(bookingId));
+
+            Assert.That(paymentRequested, Is.True, "Booking could not start payment");
+        }
+
+        Assert.That(
+            await _sagaHarness.NotExists(prerequisite.ReservationId),
+            Is.Null,
+            "Saga was not finalized after the booking was paid");
+
+        Assert.That(await _harness.Consumed.Any<ReserveSeatsCommand>(), Is.True);
+        Assert.That(await _harness.Consumed.Any<ExtendSeatHoldCommand>(), Is.True);
+        Assert.That(await _harness.Consumed.Any<RequestPaymentCommand>(), Is.True);
+        Assert.That(await _harness.Consumed.Any<ConfirmSeatReservationCommand>(), Is.True);
+        Assert.That(await _harness.Consumed.Any<MarkBookingPaidCommand>(), Is.True);
+
+        await using (var scope = _provider.CreateAsyncScope())
+        {
+            var bookingContext = scope.ServiceProvider.GetRequiredService<BookingContext>();
+            var booking = await bookingContext.Bookings
+                .Include(current => current.BookingStatus)
+                .SingleAsync(current => current.Id == bookingId);
+
+            Assert.That(booking.BookingStatus.Id, Is.EqualTo(BookingStatus.Paid.Id));
+        }
     }
 
 }

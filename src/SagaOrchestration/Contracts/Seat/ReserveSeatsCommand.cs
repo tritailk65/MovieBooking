@@ -1,3 +1,4 @@
+
 namespace SagaOrchestration.Contracts;
 
 public record ReserveSeatsCommand(

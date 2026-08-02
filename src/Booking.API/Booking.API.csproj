@@ -20,12 +20,16 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="MediatR" />
-       <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
-             <PackageReference Include="Microsoft.Extensions.ApiDescription.Server">
+      <PackageReference Include="MediatR" />
+        <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+         <PackageReference Include="Microsoft.Extensions.ApiDescription.Server">
           <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
           <PrivateAssets>all</PrivateAssets>
       </PackageReference>
+
+    <PackageReference Include="MassTransit.RabbitMQ" />
+    <PackageReference Include="MassTransit.EntityFrameworkCore" />
+    <PackageReference Include="MassTransit.Quartz" />
   </ItemGroup>
 
   <ItemGroup>

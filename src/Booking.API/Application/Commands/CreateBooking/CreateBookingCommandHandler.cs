@@ -1,7 +1,5 @@
 namespace BookingService.API.Application.Commands.CreateBooking;
 
-using SagaOrchestration.Contract;
-
 public class CreateBookingCommandHandler : IRequestHandler<CreateBookingCommand, bool>
 {
     private readonly IBookingRepository _bookingRepository;

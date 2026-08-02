@@ -1,13 +1,14 @@
-namespace Seat.API.Application.Command.ComfirmReservation;
 
-public class ConfirmReservationCommandHandler : IRequestHandler<ConfirmSeatReservationApplicationCommand, ConfirmSeatReservationResult>
+namespace Seat.API.Application.Seats.Command.ReserveSeat;
+
+public class ReserveSeatCommandHandler : IRequestHandler<ReserveSeatApplicationCommand, ReserveSeatsResult>
 {
     private readonly IRedisLockService _lockService;
     private readonly ISeatRepository _seatRepo;
-    private readonly ILogger<ConfirmReservationCommandHandler> _logger;
+    private readonly ILogger<ReserveSeatCommandHandler> _logger;
 
-    public ConfirmReservationCommandHandler(
-        ILogger<ConfirmReservationCommandHandler> logger,
+    public ReserveSeatCommandHandler(
+        ILogger<ReserveSeatCommandHandler> logger,
         IRedisLockService lockService,
         ISeatRepository seatRepo)
     {
@@ -16,9 +17,7 @@ public class ConfirmReservationCommandHandler : IRequestHandler<ConfirmSeatReser
         _seatRepo = seatRepo;
     }
 
-    public async Task<ConfirmSeatReservationResult> Handle(
-        ConfirmSeatReservationApplicationCommand request,
-        CancellationToken cancellationToken)
+    public async Task<ReserveSeatsResult> Handle (ReserveSeatApplicationCommand request, CancellationToken cancellationToken)
     {
         //Get seat reservation
         var seatReservation = await _seatRepo.GetSeatReservationHashAsync(request.ShowtimeId, request.UserId);
@@ -28,7 +27,7 @@ public class ConfirmReservationCommandHandler : IRequestHandler<ConfirmSeatReser
             _logger.LogInformation("Seat reservation not found for showtime {showtimeId} and user {userId}",
                 request.ShowtimeId,
                 request.UserId);
-            return new ConfirmSeatReservationResult(false, "Seat reservation not found");
+            return new ReserveSeatsResult(false, "Seat reservation not found");
         }
 
         if (!IsRequestedReservation(seatReservation, request.ReservationId.ToString()))
@@ -37,7 +36,8 @@ public class ConfirmReservationCommandHandler : IRequestHandler<ConfirmSeatReser
                 request.ShowtimeId,
                 request.UserId,
                 request.ReservationId);
-            return new ConfirmSeatReservationResult(false, "Seat reservation mismatch");
+            return new ReserveSeatsResult(false, "Seat reservation mismatch for showtime");
+
         }
 
         //Get all seat of reservation
@@ -49,13 +49,13 @@ public class ConfirmReservationCommandHandler : IRequestHandler<ConfirmSeatReser
         if (seatIds.Length == 0)
         {
             _logger.LogInformation("Seat reservation {reservationId} has no seats", seatReservation.Id);
-            return new ConfirmSeatReservationResult(false, "Seat reservation has no seats");
+            return new ReserveSeatsResult(false, $"Seat reservation {seatReservation.Id} has no seats");
         }
 
         if (seatReservation.ExpiresAt <= DateTime.UtcNow)
         {
             _logger.LogInformation("Seat reservation {reservationId} is expired", seatReservation.Id);
-            return new ConfirmSeatReservationResult(false, "Seat reservation is expired");
+            return new ReserveSeatsResult(false, $"Seat reservation {seatReservation.Id} is expired");
         }
 
         var mutexTokens = new Dictionary<string, string>(StringComparer.Ordinal);
@@ -73,7 +73,7 @@ public class ConfirmReservationCommandHandler : IRequestHandler<ConfirmSeatReser
                     seatId,
                     request.ShowtimeId);
                 await ReleaseMutexesAsync(request.ShowtimeId, mutexTokens);
-                return new ConfirmSeatReservationResult(false, $"Could not acquire mutex for seat {seatId}");
+                return new ReserveSeatsResult(false, $"Could not acquire mutex to release seat {seatId} for showtime {request.ShowtimeId}");
             }
 
             mutexTokens[seatId] = mutexToken;
@@ -83,29 +83,24 @@ public class ConfirmReservationCommandHandler : IRequestHandler<ConfirmSeatReser
         {
             foreach (var seatId in seatIds)
             {
-                var canConfirm = await CanConfirmSeatAsync(request.ShowtimeId, request.UserId, seatId);
-                if (!canConfirm)
-                    return new ConfirmSeatReservationResult(false, $"Seat {seatId} cannot be confirmed");
+                var canConfirm = await CanReserveSeatAsync(request.ShowtimeId, request.UserId, seatId);
+                if (!canConfirm) return null;
             }
 
             foreach (var seatId in seatIds)
             {
-                var seatConfirmed = await ConfirmSeatAsync(request.ShowtimeId, request.UserId, seatId);
-                if (!seatConfirmed)
-                    return new ConfirmSeatReservationResult(false, $"Failed to confirm seat {seatId}");
+                var seatConfirmed = await ReserveSeatAsync(request.ShowtimeId, request.UserId, seatId);
+                if (!seatConfirmed) return null;
             }
 
-            var reservationReleased = await _seatRepo.ReleaseSeatReservationHashAsync(request.ShowtimeId, request.UserId);
-
-            if (!reservationReleased)
-                return new ConfirmSeatReservationResult(false, "Confirmed seats but failed to remove seat reservation");
-
-            _logger.LogInformation("Confirmed seat reservation {reservationId} for showtime {showtimeId} and user {userId}",
+            _logger.LogInformation("Reserved seat {reservationId} for showtime {showtimeId} and user {userId}",
                 seatReservation.Id,
                 request.ShowtimeId,
                 request.UserId);
 
-            return new ConfirmSeatReservationResult(true);
+            seatReservation.IncreaseReservationVersion();
+
+            return new ReserveSeatsResult(true, $"Reserved seat {seatReservation.Id} for showtime {request.ShowtimeId} and user {request.UserId}");
         }
         finally
         {
@@ -113,7 +108,7 @@ public class ConfirmReservationCommandHandler : IRequestHandler<ConfirmSeatReser
         }
     }
 
-    private async Task<bool> CanConfirmSeatAsync(int showtimeId, string userId, string seatId)
+    private async Task<bool> CanReserveSeatAsync(int showtimeId, string userId, string seatId)
     {
         var seatLock = await _lockService.GetLockSeatAsync(showtimeId, seatId);
         var seat = await _seatRepo.GetSeatHashAsync(showtimeId, seatId);
@@ -151,25 +146,21 @@ public class ConfirmReservationCommandHandler : IRequestHandler<ConfirmSeatReser
         return true;
     }
 
-    private async Task<bool> ConfirmSeatAsync(int showtimeId, string userId, string seatId)
+    private async Task<bool> ReserveSeatAsync(int showtimeId, string userId, string seatId)
     {
         var seatLock = await _lockService.GetLockSeatAsync(showtimeId, seatId);
         if (seatLock is null || seatLock.LockedByUserId != userId) return false;
 
         //Nhả key lock
-        var lockReleased = await _lockService.ReleaseLockAsync(showtimeId, seatId, seatLock.LockToken);
+        //var lockReleased = await _lockService.ReleaseLockAsync(showtimeId, seatId, seatLock.LockToken);
         // TODO Nice-to-have: Trả lỗi rõ ràng cho client
-        if (!lockReleased) return false;
+        //if (!lockReleased) return false;
 
         var seat = await _seatRepo.GetSeatHashAsync(showtimeId, seatId);
         if (seat is null) return false;
 
-        seat.SeatStatus = SeatStatus.Sold;  // Chuyển status sang đã bán
-        seat.LockedByUserId = string.Empty;
-        seat.LockToken = string.Empty;
-        seat.LockExpiration = default;
-
-        // Cập nhật lại map
+        seat.SeatStatus = SeatStatus.Reserved; 
+        // Thêm logic reserve seat ở đây
 
         // TODO: Chỉnh lại trả về list các ghế cần update sau đó gọi seat service update đúng 1 lần để đảm bảo Stale cho UI
         await _seatRepo.SetSeatHashAysnc(showtimeId, seatId, JsonSerializer.Serialize(seat));
