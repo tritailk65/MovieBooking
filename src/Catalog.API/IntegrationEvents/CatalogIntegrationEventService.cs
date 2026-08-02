@@ -1,10 +1,13 @@
-using EventBus.Abstractions;
 using IntegrationEventLogEF.Services;
 using IntergrationEventLog.Utilities;
+using MassTransit;
 
 public sealed class CatalogIntegrationEventService (
     ILogger<CatalogIntegrationEventService> logger,
-    IEventBus eventBus,
+    // Old publisher used the custom RabbitMQ event bus, which is not compatible
+    // with the MassTransit envelope/topology consumed by Seat.API.
+    // IEventBus eventBus,
+    IPublishEndpoint publishEndpoint,
     CatalogContext catalogContext,
     IIntegrationEventLogService integrationEventLogService
     ) : ICatalogIntegrationEventService
@@ -18,7 +21,9 @@ public sealed class CatalogIntegrationEventService (
             logger.LogInformation("Publishing integration event: {IntegrationEventId_published} - ({@IntegrationEvent})", evt.Id, evt);
 
             await integrationEventLogService.MarkEventAsInProgressAsync(evt.Id);
-            await eventBus.PublishAsync(evt);
+            // Old custom event bus publisher:
+            // await eventBus.PublishAsync(evt);
+            await publishEndpoint.Publish(evt, evt.GetType());
             await integrationEventLogService.MarkEventAsPublishedAsync(evt.Id);
         }
         catch (Exception ex)

@@ -1,3 +1,5 @@
+using SagaOrchestration.Contracts;
+
 namespace Seat.API.IntegrationEvents.EventHandlers;
 
 public class ShowtimeCreatedIntegrationEventHandler : IIntegrationEventHandler<ShowtimeCreatedIntegrationEvent>

@@ -3,30 +3,13 @@ using Catalog.API.Infrastucture;
 using Catalog.API.IntegrationEvents;
 using EventBus.Events;
 using MassTransit;
-using Seat.API.IntegrationEvents.EventHandlers;
-using CatalogShowtimeCreated = Catalog.API.IntegrationEvents.Event.ShowtimeCreatedIntegrationEvent;
-using SeatShowtimeCreated = Seat.API.IntegrationEvents.Events.ShowtimeCreatedIntegrationEvent;
 
 namespace Booking.Saga.IntegrationTests;
 
-public sealed class ShowtimeCreatedIntegrationEventConsumer(
-    ShowtimeCreatedIntegrationEventHandler handler)
-    : IConsumer<CatalogShowtimeCreated>
-{
-    public Task Consume(ConsumeContext<CatalogShowtimeCreated> context)
-    {
-        var message = context.Message;
-
-        return handler.Handle(new SeatShowtimeCreated(
-            message.ShowtimeId,
-            message.HallId,
-            message.MovieId,
-            message.StartTime,
-            message.EndTime,
-            message.BasePrice,
-            message.Seats));
-    }
-}
+// Old test-only adapter converted the Catalog-local contract into the
+// Seat-local contract. Catalog and Seat now publish/consume the shared
+// SagaOrchestration.Contracts.ShowtimeCreatedIntegrationEvent directly.
+// public sealed class ShowtimeCreatedIntegrationEventConsumer(...)
 
 public sealed class TestCatalogIntegrationEventService(
     CatalogContext catalogContext,

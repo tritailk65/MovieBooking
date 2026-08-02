@@ -42,7 +42,36 @@ public static class Extensions
             options.UseNpgsql(sagaConnection, postgres => postgres.MigrationsAssembly(typeof(BookingSagaContext).Assembly.FullName));
         });
 
-        services.AddQuartz();
+        // configuration used Quartz RAMJobStore, therefore scheduled saga messages
+        // were lost whenever Booking.API restarted.
+        // services.AddQuartz();
+        services.AddMigration<BookingSagaContext>();
+
+        services.AddQuartz(quartz =>
+        {
+            quartz.SchedulerName = "booking-saga-scheduler";
+            quartz.SchedulerId = "AUTO";
+
+            quartz.UsePersistentStore(store =>
+            {
+                store.PerformSchemaValidation = true;
+                store.UseProperties = true;
+                store.RetryInterval = TimeSpan.FromSeconds(15);
+
+                store.UsePostgres(postgres =>
+                {
+                    postgres.ConnectionString = sagaConnection;
+                    postgres.TablePrefix = "qrtz_";
+                });
+
+                store.UseSystemTextJsonSerializer();
+                store.UseClustering(cluster =>
+                {
+                    cluster.CheckinInterval = TimeSpan.FromSeconds(10);
+                    cluster.CheckinMisfireThreshold = TimeSpan.FromSeconds(20);
+                });
+            });
+        });
 
         services.AddQuartzHostedService(options =>
         {
@@ -59,7 +88,10 @@ public static class Extensions
             x.AddEntityFrameworkOutbox<BookingSagaContext>(outbox =>
             {
                 outbox.UsePostgres();
-                outbox.UseBusOutbox();
+
+                // configuration made application-level IPublishEndpoint use
+                // BookingSagaContext even though Booking writes use BookingContext.
+                // outbox.UseBusOutbox();
             });
 
             x.AddSagaStateMachine<BookingStateMachine,BookingSaga,BookingSagaDefinition>()

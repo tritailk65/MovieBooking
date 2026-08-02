@@ -69,10 +69,14 @@ public static class BookingApi
         }
     }
 
-    public static async Task<Results<Ok<string>, BadRequest<string>>> CreateBookingAsync(
+    // Old response only returned a text message containing RequestId, so the app
+    // could not call the payment endpoint which requires BookingId.
+    // public static async Task<Results<Ok<string>, BadRequest<string>>> CreateBookingAsync(...)
+    public static async Task<Results<Created<CreateBookingResponse>, BadRequest<string>>> CreateBookingAsync(
         [FromBody] FromReservationRequest request,
         SeatGrpc.SeatGrpcClient seatClient,
-        IMediator mediator)
+        IMediator mediator,
+        IBookingQueries bookingQueries)
     {
         // Gọi Seat Service để check data
         var validation = await seatClient.ValidationReservationAsync(new ValidationReservationRequest
@@ -104,7 +108,24 @@ public static class BookingApi
 
         if (result)
         {
-            return TypedResults.Ok($"CreateBookingCommand succeeded - RequestId: {requestId}");
+            var bookingId = await bookingQueries.GetBookingIdByReservationAsync(
+                request.reservationId);
+
+            if (!bookingId.HasValue)
+            {
+                return TypedResults.BadRequest(
+                    $"Booking was created but could not be loaded - ReservationId: {request.reservationId}");
+            }
+
+
+            // return TypedResults.Ok($"CreateBookingCommand succeeded - RequestId: {requestId}");
+            return TypedResults.Created(
+                $"/api/booking/{bookingId.Value}",
+                new CreateBookingResponse(
+                    bookingId.Value,
+                    request.reservationId,
+                    requestId,
+                    "Submitted"));
         }
         else
         {
@@ -159,3 +180,9 @@ public record FromReservationRequest
     public IEnumerable<SeatItem> BookingItem { get; init; } = [];
 
 }
+
+public sealed record CreateBookingResponse(
+    int BookingId,
+    Guid ReservationId,
+    Guid RequestId,
+    string Status);

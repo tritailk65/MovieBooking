@@ -17,6 +17,7 @@ public static class Extensions
 
         builder.Services.AddSingleton<ISeatRepository, SeatRedisRepository>();
         builder.Services.AddSingleton<IRedisLockService, RedisLockService>();
+        builder.Services.AddTransient<ShowtimeCreatedIntegrationEventHandler>();
  
         // builder.AddRabbitMqEventBus("eventbus")
         //     .AddSubscription<ShowtimeCreatedIntegrationEvent, ShowtimeCreatedIntegrationEventHandler>()
@@ -40,6 +41,7 @@ public static class Extensions
             x.AddConsumer<ConfirmSeatReservationCommandConsumer>();
             x.AddConsumer<ExtendSeatHoldCommandConsumer>();
             x.AddConsumer<ReserveSeatsCommandConsumer>();
+            x.AddConsumer<ShowtimeCreatedIntegrationEventConsumer>();
 
             x.UsingRabbitMq((context, cfg) =>
             {
@@ -60,7 +62,9 @@ public static class Extensions
     }
 }
 
-[JsonSerializable(typeof(ShowtimeCreatedIntegrationEvent))]
+// Old local contract metadata:
+// [JsonSerializable(typeof(ShowtimeCreatedIntegrationEvent))]
+[JsonSerializable(typeof(SagaOrchestration.Contracts.ShowtimeCreatedIntegrationEvent))]
 partial class IntegrationEventsContext : JsonSerializerContext
 {
 

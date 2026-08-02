@@ -1,4 +1,6 @@
-using Catalog.API.IntegrationEvents.Event;
+// Old service-local contract:
+// using Catalog.API.IntegrationEvents.Event;
+using SagaOrchestration.Contracts;
 
 namespace Catalog.API.Application.Showtimes.Commands.CreateShowtime;
 

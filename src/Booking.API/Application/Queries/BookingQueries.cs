@@ -37,6 +37,15 @@ public class BookingQueries : IBookingQueries
         return booking;
     }
 
+    public Task<int?> GetBookingIdByReservationAsync(Guid reservationId)
+    {
+        return _context.Bookings
+            .AsNoTracking()
+            .Where(booking => booking.ReservationId == reservationId)
+            .Select(booking => (int?)booking.Id)
+            .SingleOrDefaultAsync();
+    }
+
     public async Task<IEnumerable<BookingVM>> GetBookingFromUserAsync(string userId)
     {
         var booking = _context.Bookings.Include(m => m.BookingItems).Where(b => b.UserId == userId)

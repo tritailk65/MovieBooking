@@ -1,4 +1,5 @@
 ﻿using IntegrationEventLogEF.Services;
+using MassTransit;
 using Microsoft.AspNetCore.Authorization;
 using ServiceDefaults.Authorization;
 
@@ -47,7 +48,24 @@ namespace Catalog.API.Extensions
 
             // Rabbit mq
             builder.Services.AddTransient<ICatalogIntegrationEventService, CatalogIntegrationEventService>();
-            builder.AddRabbitMqEventBus("eventbus");
+            // Old custom event bus used a different RabbitMQ exchange/envelope than
+            // the MassTransit consumers in Seat.API.
+            // builder.AddRabbitMqEventBus("eventbus");
+
+            var rabbitMq = builder.Configuration.GetConnectionString("eventbus")
+                ?? throw new InvalidOperationException("Missing ConnectionStrings:eventbus");
+
+            builder.Services.AddMassTransit(x =>
+            {
+                x.SetEndpointNameFormatter(
+                    new KebabCaseEndpointNameFormatter("catalog", false));
+
+                x.UsingRabbitMq((context, cfg) =>
+                {
+                    cfg.Host(new Uri(rabbitMq));
+                    cfg.ConfigureEndpoints(context);
+                });
+            });
             
             //option
             builder.Services.AddOptions<CatalogOptions>().BindConfiguration(nameof(CatalogOptions));

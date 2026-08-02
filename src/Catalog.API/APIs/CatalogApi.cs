@@ -1,4 +1,5 @@
 using ServiceDefaults.Authorization;
+using Catalog.API.Application.Showtimes.Queries.GetShowtimes;
 
 namespace Catalog.API;
 
@@ -62,6 +63,25 @@ public static class CatalogApi
         .WithDescription("Retrieves a paginated list of movies from the catalog.")
         .Produces(StatusCodes.Status200OK)
         .Produces(StatusCodes.Status400BadRequest);
+
+        group.MapGet("/showtimes", async (
+            int? movieId,
+            int? cinemaId,
+            DateOnly? date,
+            IMediator mediator,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await mediator.Send(
+                new GetShowtimesQuery(movieId, cinemaId, date),
+                cancellationToken);
+
+            return Results.Ok(result);
+        })
+        // Authentication/authorization remains disabled during the client-development phase.
+        // .RequireAuthorization(PermissionPolicies.Require("catalog.read"))
+        .WithName("GetShowtimes")
+        .WithDescription("Gets showtimes, optionally filtered by movie, cinema, and date.")
+        .Produces<IReadOnlyCollection<ShowtimeDto>>(StatusCodes.Status200OK);
 
         group.MapPost("/showtimes", async (IMediator mediator, CreateShowtimeCommand command) =>
         {

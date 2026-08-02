@@ -1,7 +1,9 @@
 using Catalog.API.Application.Showtimes.Commands.CreateShowtime;
 using Catalog.API.Domain.Entities;
 using Catalog.API.IntegrationEvents;
-using Catalog.API.IntegrationEvents.Event;
+// Old service-local contract:
+// using Catalog.API.IntegrationEvents.Event;
+using SagaOrchestration.Contracts;
 using Catalog.API.UnitTests.TestSupport;
 using Microsoft.Extensions.Logging;
 using NSubstitute;
