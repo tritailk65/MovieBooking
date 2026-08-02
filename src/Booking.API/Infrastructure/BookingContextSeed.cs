@@ -1,4 +1,3 @@
-using BookingService.Domain.AggregateModel.BuyerAggregate;
 
 namespace BookingService.API.Infrastructure;
 

@@ -23,6 +23,7 @@
     <Project Path="tests/Booking.Domain.UnitTests/Booking.Domain.UnitTests.csproj" />
     <Project Path="tests/Catalog.API.UnitTests/Catalog.API.UnitTests.csproj" />
     <Project Path="tests/Seat.API.UnitTests/Seat.API.UnitTests.csproj" />
+    <Project Path="tests/Booking.Saga.IntegrationTests/Booking.Saga.IntegrationTests.csproj" />
   </Folder>
 
 </Solution>

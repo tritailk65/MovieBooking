@@ -2,4 +2,6 @@ namespace SagaOrchestration.Contracts;
 
 public record BookingCancellationRequestedIntegrationEvent(
     Guid ReservationId,
-    int BookingId) : IntegrationEvent;
+    int BookingId,
+    string UserId,
+    int ShowtimeId) : IntegrationEvent;

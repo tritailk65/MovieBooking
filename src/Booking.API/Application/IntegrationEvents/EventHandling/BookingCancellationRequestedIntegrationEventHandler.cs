@@ -5,12 +5,12 @@ using CancelBookingApplicationCommand = BookingService.API.Application.Commands.
 namespace BookingService.API.Application.IntegrationEvents.EventHandling;
 
 
-public class BookingCancelIntegrationEventHandler(
+public class BookingCancellationRequestedIntegrationEventHandler(
     IMediator mediator,
-    ILogger<BookingCancelIntegrationEventHandler> logger
-) : IIntegrationEventHandler<BookingCancelIntegrationEvent>
+    ILogger<BookingCancellationRequestedIntegrationEventHandler> logger
+) : IIntegrationEventHandler<BookingCancellationRequestedIntegrationEvent>
 {
-    public Task Handle(BookingCancelIntegrationEvent @event)
+    public Task Handle(BookingCancellationRequestedIntegrationEvent @event)
     {
         logger.LogInformation("Handling integration event: {IntegrationEventId} - ({@IntegrationEvent})", @event.Id, @event);
 

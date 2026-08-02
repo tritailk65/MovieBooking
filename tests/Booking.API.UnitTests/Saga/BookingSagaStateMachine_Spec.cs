@@ -1,270 +1,400 @@
-// namespace Booking.API.UnitTests.Saga;
+namespace Booking.API.UnitTests.Saga;
 
-// using MassTransit;
-// using MassTransit.Testing;
-// using Microsoft.Extensions.DependencyInjection;
-// using Orchestration.Tests.NUnit;
-// using SagaOrchestration;
-// using SagaOrchestration.Contract;
+[TestFixture]
+public class BookingSagaStateMachineSpec
+{
+    private ServiceProvider _provider = null!;
+    private ITestHarness _harness = null!;
+    private QuartzTimeAdjustment _adjustment;
+    private ISagaStateMachineTestHarness<BookingStateMachine, BookingSaga> _sagaHarness = null!;
 
-// [TestFixture]
-// public class BookingSagaStateMachineSpec
-// {
-//     private ServiceProvider _provider = null!;
-//     private ITestHarness _harness = null!;
-//     private ISagaStateMachineTestHarness<BookingStateMachine, BookingSaga> _sagaHarness = null!;
+    #region Mock data
+    private const int ShowtimeId = 1;
+    private const string UserId = "2779fb04-052e-49c1-8ce0-c200d8e06b6f";
+    private const decimal TotalPrice = 180_000m;
+    private sealed record SagaTestContext(
+        Guid ReservationId,
+        int BookingId,
+        string PaymentId);
+    #endregion
 
-//     private static readonly Guid ReservationId = Guid.Parse("b185922e-3061-49a1-a9e6-28521eeca2f9");
-//     private const int BookingId = 99;
-//     private const int ShowtimeId = 1;
-//     private const string UserId = "2779fb04-052e-49c1-8ce0-c200d8e06b6f";
-//     private const decimal TotalPrice = 180_000m;
+    #region Helper function
+    private async Task<SagaTestContext> CreateSagaInReservingSeat()
+    {
+        var context = new SagaTestContext(
+            ReservationId: NewId.NextGuid(),
+            BookingId: Random.Shared.Next(1, int.MaxValue),
+            PaymentId: NewId.NextGuid().ToString());
 
-//     [SetUp]
-//     public async Task Setup()
-//     {
-//         _provider = new ServiceCollection()
-//             .ConfigureMassTransit(x =>
-//             {
-//                 x.AddSagaStateMachine<BookingStateMachine, BookingSaga>();
-//             })
-//             .BuildServiceProvider(true);
+        await _harness.Bus.Publish(
+            new BookingStatusChangedToSubmittedIntegrationEvent(
+                context.ReservationId,
+                context.BookingId,
+                ShowtimeId,
+                UserId,
+                ["A1", "A2"],
+                TotalPrice,
+                ReservationVersion: 3,
+                PreparedUntil: DateTime.UtcNow.AddMinutes(5)));
 
-//         _harness = _provider.GetTestHarness();
-//         await _harness.Start();
-//         _sagaHarness = _harness.GetSagaStateMachineHarness<BookingStateMachine, BookingSaga>();
-//     }
+        Assert.That(await _sagaHarness.Exists(context.ReservationId,state => state.ReservingSeat),Is.EqualTo(context.ReservationId));
+        return context;
+    }
 
-//     [TearDown]
-//     public async Task Teardown()
-//     {
-//         await _harness.Stop();
-//         await _provider.DisposeAsync();
-//     }
+    private async Task<SagaTestContext> CreateSagaInPendingPayment(SagaTestContext context)
+    {
+        Assert.That(await _harness.Consumed.Any<BookingStatusChangedToSubmittedIntegrationEvent>(), Is.True, "Message BookingStatusChangedToSubmittedIntegrationEvent not consumed");
 
-//     [Test]
-//     public async Task BookingSubmitted_ShouldCreateSagaAndRequestPayment()
-//     {
-//         await PublishBookingSubmitted();
+        Assert.That(await _sagaHarness.Consumed.Any<BookingStatusChangedToSubmittedIntegrationEvent>(), "Message not consumed by saga");   
+        Assert.That(await _sagaHarness.Exists(context.ReservationId, state => state.ReservingSeat), Is.EqualTo(context.ReservationId), "Saga not transition to ReservingSeat");
 
-//         Assert.That(
-//             await _sagaHarness.Exists(ReservationId, state => state.PaymentPending),
-//             Is.Not.Null);
+        await _harness.Bus.Publish(new SeatReservationHeldIntegrationEvent(context.ReservationId, context.BookingId));
+        Assert.That(await _sagaHarness.Exists(context.ReservationId, state => state.PendingPayment), Is.EqualTo(context.ReservationId), "Saga not transition to PendingPayment");
 
-//         Assert.That(
-//             await _harness.Published.Any<RequestPaymentCommand>(message =>
-//                 message.Context.Message.ReservationId == ReservationId &&
-//                 message.Context.Message.BookingId == BookingId &&
-//                 message.Context.Message.Amount == TotalPrice),
-//             Is.True);
+        return context;
+    }
 
-//         var saga = _sagaHarness.Sagas.Contains(ReservationId);
-//         Assert.That(saga, Is.Not.Null);
-//         Assert.Multiple(() =>
-//         {
-//             Assert.That(saga!.BookingId, Is.EqualTo(BookingId));
-//             Assert.That(saga.ShowtimeId, Is.EqualTo(ShowtimeId));
-//             Assert.That(saga.UserId, Is.EqualTo(UserId));
-//             Assert.That(saga.Seats, Is.EqualTo(new[] { "A1", "A2" }));
-//             Assert.That(saga.ReservationVersion, Is.EqualTo(3));
-//         });
-//     }
+    private async Task<SagaTestContext> CreateSagaInExtendingSeatHold(SagaTestContext context)
+    {
+        await _harness.Bus.Publish(new PaymentRequestedIntegrationEvent(context.ReservationId, context.BookingId, UserId, TotalPrice));
+        Assert.That(await _sagaHarness.Consumed.Any<PaymentRequestedIntegrationEvent>(message =>
+                message.Context.Message.ReservationId == context.ReservationId),
+            Is.True);
 
-//     [Test]
-//     public async Task PaymentSucceeded_ShouldRequestSeatConfirmation()
-//     {
-//         await PublishBookingSubmitted();
+        Assert.That(await _sagaHarness.Exists(context.ReservationId, state => state.ExtendingSeatHold), Is.EqualTo(context.ReservationId), "Saga not transition to ExtendingSeatHold");
+        return context;
+    }
+    #endregion
 
-//         await _harness.Bus.Publish(new PaymentSucceededIntegrationEvent(
-//             ReservationId,
-//             BookingId,
-//             "payment-123"));
+    #region Setup and TearDown
+    [SetUp]
+    public async Task Setup()
+    {
+        _provider = new ServiceCollection()
+            .ConfigureMassTransit(x =>
+            {
+                x.AddSagaStateMachine<BookingStateMachine, BookingSaga>();
+            })
+            .BuildServiceProvider(true);
 
-//         Assert.That(
-//             await _sagaHarness.Exists(ReservationId, state => state.ConfirmingSeats),
-//             Is.Not.Null);
+        _harness = _provider.GetTestHarness();
+        await _harness.Start();
+        _sagaHarness = _harness.GetSagaStateMachineHarness<BookingStateMachine, BookingSaga>();
+        _adjustment = new QuartzTimeAdjustment(_provider);
+    }
 
-//         Assert.That(
-//             await _harness.Published.Any<ConfirmSeatReservationCommand>(message =>
-//                 message.Context.Message.ReservationId == ReservationId &&
-//                 message.Context.Message.BookingId == BookingId &&
-//                 message.Context.Message.ShowtimeId == ShowtimeId &&
-//                 message.Context.Message.ReservationVersion == 3),
-//             Is.True);
-//     }
+    [TearDown]
+    public async Task Teardown()
+    {
+        await _harness.Stop();
+        await _provider.DisposeAsync();
+        _adjustment.Dispose();
+    }
+    #endregion
 
-//     [Test]
-//     public async Task PaymentFailed_ShouldCancelBookingAndReleaseReservation()
-//     {
-//         await PublishBookingSubmitted();
+    [Test]
+    public async Task BookingSubmitted_ShouldCreateSaga()
+    {
+        var sagaContext = await CreateSagaInReservingSeat();
 
-//         await _harness.Bus.Publish(new PaymentFailedIntegrationEvent(
-//             ReservationId,
-//             BookingId,
-//             "Card declined"));
+        Assert.That(await _harness.Consumed.Any<BookingStatusChangedToSubmittedIntegrationEvent>(), Is.True, "Message not consumed");
+        Assert.That(await _sagaHarness.Consumed.Any<BookingStatusChangedToSubmittedIntegrationEvent>(), "Message not consumed by saga");
 
-//         Assert.That(
-//             await _sagaHarness.Exists(ReservationId, state => state.Cancelling),
-//             Is.Not.Null);
-//         Assert.That(
-//             await _harness.Published.Any<CancelBookingCommand>(message =>
-//                 message.Context.Message.ReservationId == ReservationId),
-//             Is.True);
-//         Assert.That(
-//             await _harness.Published.Any<ReleaseSeatReservationCommand>(message =>
-//                 message.Context.Message.ReservationId == ReservationId),
-//             Is.True);
+        // Assert.That(
+        //     await _harness.Published.Any<ReserveSeatsCommand>(message =>
+        //         message.Context.Message.ReservationId == ReservationId &&
+        //         message.Context.Message.BookingId == BookingId &&
+        //         message.Context.Message.ReservationVersion == 3),
+        //     Is.True);
 
-//         await _harness.Bus.Publish(new BookingCancelledIntegrationEvent(ReservationId, BookingId));
-//         await _harness.Bus.Publish(new SeatReservationReleasedIntegrationEvent(ReservationId, BookingId));
+        var saga = _sagaHarness.Sagas.Contains(sagaContext.ReservationId);
+        Assert.That(saga, Is.Not.Null);
 
-//         Assert.That(
-//             await _sagaHarness.Consumed.Any<SeatReservationReleasedIntegrationEvent>(),
-//             Is.True);
-//         Assert.That(
-//             await _sagaHarness.NotExists(ReservationId),
-//             Is.Null);
-//     }
+        Assert.Multiple(() =>
+        {
+            Assert.That(saga!.BookingId, Is.EqualTo(sagaContext.BookingId));
+            Assert.That(saga.ShowtimeId, Is.EqualTo(ShowtimeId));
+            Assert.That(saga.UserId, Is.EqualTo(UserId));
+            Assert.That(saga.Seats, Is.EqualTo(new[] { "A1", "A2" }));
+            Assert.That(saga.ReservationVersion, Is.EqualTo(3));
+        });
+        
+        var instance = _sagaHarness.Created.ContainsInState(sagaContext.ReservationId, _sagaHarness.StateMachine, _sagaHarness.StateMachine.ReservingSeat);
+        Assert.That(instance, Is.Not.Null, "Saga instance not found");
 
-//     [Test]
-//     public async Task SeatConfirmationFailed_ShouldRunAllCompensations()
-//     {
-//         await PublishBookingSubmitted();
-//         await _harness.Bus.Publish(new PaymentSucceededIntegrationEvent(
-//             ReservationId,
-//             BookingId,
-//             "payment-123"));
-//         await _harness.Bus.Publish(new SeatReservationConfirmationFailedIntegrationEvent(
-//             ReservationId,
-//             BookingId,
-//             "Redis unavailable"));
+        Guid? existsId = await _sagaHarness.Exists(sagaContext.ReservationId, x => x.ReservingSeat);
+        Assert.That(existsId.HasValue, Is.True, "Saga did not exist");
+    }
 
-//         Assert.That(
-//             await _sagaHarness.Exists(ReservationId, state => state.Compensating),
-//             Is.Not.Null);
-//         Assert.That(await _harness.Published.Any<RefundPaymentCommand>(), Is.True);
-//         Assert.That(await _harness.Published.Any<CancelBookingCommand>(), Is.True);
-//         Assert.That(await _harness.Published.Any<ReleaseSeatReservationCommand>(), Is.True);
+    [Test]
+    public async Task SeatReservationHeld_ShouldCreateBookingSchedule()
+    {
+        var sagaContext = await CreateSagaInReservingSeat();
 
-//         await _harness.Bus.Publish(new PaymentRefundedIntegrationEvent(
-//             ReservationId,
-//             BookingId,
-//             "payment-123"));
-//         await _harness.Bus.Publish(new BookingCancelledIntegrationEvent(ReservationId, BookingId));
-//         await _harness.Bus.Publish(new SeatReservationReleasedIntegrationEvent(ReservationId, BookingId));
+        Assert.That(await _harness.Consumed.Any<BookingStatusChangedToSubmittedIntegrationEvent>(), Is.True, "Message not consumed");
+        Assert.That(await _sagaHarness.Consumed.Any<BookingStatusChangedToSubmittedIntegrationEvent>(), "Message not consumed by saga");
 
-//         Assert.That(
-//             await _sagaHarness.Consumed.Any<SeatReservationReleasedIntegrationEvent>(),
-//             Is.True);
-//         Assert.That(
-//             await _sagaHarness.NotExists(ReservationId),
-//             Is.Null);
-//     }
+        Assert.That(await _sagaHarness.Exists(sagaContext.ReservationId, state => state.ReservingSeat), Is.EqualTo(sagaContext.ReservationId));
 
-//     private Task PublishBookingSubmitted() =>
-//         _harness.Bus.Publish(new BookingSubmittedIntegrationEvent(
-//             ReservationId,
-//             BookingId,
-//             ShowtimeId,
-//             UserId,
-//             new[] { "A1", "A2" },
-//             TotalPrice,
-//             ReservationVersion: 3,
-//             PreparedUntil: DateTime.UtcNow.AddMinutes(5)));
-// }
+        await _harness.Bus.Publish(new SeatReservationHeldIntegrationEvent(sagaContext.ReservationId, sagaContext.BookingId));
 
-// [TestFixture]
-// public class BookingSagaHappyPathIntegrationSpec
-// {
-//     private ServiceProvider _provider = null!;
-//     private ITestHarness _harness = null!;
-//     private ISagaStateMachineTestHarness<BookingStateMachine, BookingSaga> _sagaHarness = null!;
+        Assert.That(await _sagaHarness.Consumed.Any<SeatReservationHeldIntegrationEvent>(message =>
+                    message.Context.Message.ReservationId == sagaContext.ReservationId &&
+                    message.Context.Message.BookingId == sagaContext.BookingId),
+                Is.True);
 
-//     [SetUp]
-//     public async Task Setup()
-//     {
-//         _provider = new ServiceCollection()
-//             .ConfigureMassTransit(x =>
-//             {
-//                 x.AddSagaStateMachine<BookingStateMachine, BookingSaga>();
-//                 x.AddConsumer<FakePaymentConsumer>();
-//                 x.AddConsumer<FakeSeatConsumer>();
-//                 x.AddConsumer<FakeBookingConsumer>();
-//             })
-//             .BuildServiceProvider(true);
+        Assert.That(await _sagaHarness.Exists(sagaContext.ReservationId, state => state.PendingPayment), Is.EqualTo(sagaContext.ReservationId));
 
-//         _harness = _provider.GetTestHarness();
-//         await _harness.Start();
-//         _sagaHarness = _harness.GetSagaStateMachineHarness<BookingStateMachine, BookingSaga>();
-//     }
+        var saga = _sagaHarness.Sagas.Contains(sagaContext.ReservationId);
 
-//     [TearDown]
-//     public async Task Teardown()
-//     {
-//         await _harness.Stop();
-//         await _provider.DisposeAsync();
-//     }
+        Assert.That(saga, Is.Not.Null);
+        Assert.That(saga!.PendingPaymentExpirationTokenId,Is.Not.Null);
 
-//     [Test]
-//     public async Task BookingSubmitted_ShouldCompleteTheWholeOrchestration()
-//     {
-//         var reservationId = Guid.NewGuid();
+    }
 
-//         await _harness.Bus.Publish(new BookingSubmittedIntegrationEvent(
-//             reservationId,
-//             BookingId: 99,
-//             ShowtimeId: 1,
-//             UserId: "user-1",
-//             SeatIds: new[] { "A1", "A2" },
-//             TotalPrice: 180_000m,
-//             ReservationVersion: 3,
-//             PreparedUntil: DateTime.UtcNow.AddMinutes(5)));
+    [Test]
+    public async Task SeatReservationFailed_ShouldCancelBookingAndReleaseReservation()
+    {
+        var sagaContext = await CreateSagaInReservingSeat();
 
-//         Assert.That(
-//             await _harness.Consumed.Any<RequestPaymentCommand>(),
-//             Is.True,
-//             "Fake Payment consumer did not receive the payment command");
-//         Assert.That(
-//             await _harness.Consumed.Any<ConfirmSeatReservationCommand>(),
-//             Is.True,
-//             "Fake Seat consumer did not receive the confirmation command");
-//         Assert.That(
-//             await _harness.Consumed.Any<MarkBookingPaidCommand>(),
-//             Is.True,
-//             "Fake Booking consumer did not receive the mark-paid command");
-//         Assert.That(
-//             await _sagaHarness.Consumed.Any<BookingMarkedPaidIntegrationEvent>(),
-//             Is.True,
-//             "Saga did not receive the final Booking acknowledgement");
+        Assert.That(await _harness.Consumed.Any<BookingStatusChangedToSubmittedIntegrationEvent>(), Is.True, "Message not consumed");
+        Assert.That(await _sagaHarness.Consumed.Any<BookingStatusChangedToSubmittedIntegrationEvent>(), "Message not consumed by saga");
 
-//         Assert.That(
-//             await _sagaHarness.NotExists(reservationId),
-//             Is.Null);
-//         Assert.That(await _harness.Published.Any<Fault>(), Is.False);
-//     }
+        await _harness.Bus.Publish(new SeatReservationFailedIntegrationEvent(sagaContext.ReservationId, sagaContext.BookingId,  "Cannot lock seat"));
 
-//     private sealed class FakePaymentConsumer : IConsumer<RequestPaymentCommand>
-//     {
-//         public Task Consume(ConsumeContext<RequestPaymentCommand> context) =>
-//             context.Publish(new PaymentSucceededIntegrationEvent(
-//                 context.Message.ReservationId,
-//                 context.Message.BookingId,
-//                 "payment-integration-test"));
-//     }
+        Assert.That(await _sagaHarness.Consumed.Any<SeatReservationFailedIntegrationEvent>(message =>
+                    message.Context.Message.ReservationId == sagaContext.ReservationId &&
+                    message.Context.Message.BookingId == sagaContext.BookingId),
+                Is.True);
 
-//     private sealed class FakeSeatConsumer : IConsumer<ConfirmSeatReservationCommand>
-//     {
-//         public Task Consume(ConsumeContext<ConfirmSeatReservationCommand> context) =>
-//             context.Publish(new SeatReservationConfirmedIntegrationEvent(
-//                 context.Message.ReservationId,
-//                 context.Message.BookingId));
-//     }
+        Assert.That(await _harness.Published.Any<CancelBookingCommand>(), Is.True);
+        Assert.That(await _harness.Published.Any<ReleaseSeatReservationCommand>(), Is.True);
 
-//     private sealed class FakeBookingConsumer : IConsumer<MarkBookingPaidCommand>
-//     {
-//         public Task Consume(ConsumeContext<MarkBookingPaidCommand> context) =>
-//             context.Publish(new BookingMarkedPaidIntegrationEvent(
-//                 context.Message.ReservationId,
-//                 context.Message.BookingId));
-//     }
-// }
+        var instance = _sagaHarness.Created.ContainsInState(sagaContext.ReservationId, _sagaHarness.StateMachine, _sagaHarness.StateMachine.Cancelling);
+        Assert.That(instance, Is.Not.Null, "Saga instance not found");
+
+        Guid? existsId = await _sagaHarness.Exists(sagaContext.ReservationId, x => x.Cancelling);
+        Assert.That(existsId.HasValue, Is.True, "Saga did not exist");
+    }
+
+    [Test]
+    public async Task SeatReservationTimedOut_ShouldCancelBookingAndReleaseReservation()
+    {
+        var sagaContext = await CreateSagaInReservingSeat();
+
+        Assert.That(await _harness.Consumed.Any<BookingStatusChangedToSubmittedIntegrationEvent>(), Is.True, "Message not consumed");
+        Assert.That(await _sagaHarness.Consumed.Any<BookingStatusChangedToSubmittedIntegrationEvent>(), "Message not consumed by saga");
+        
+        await _harness.Bus.Publish(new SeatReservationTimedOutIntegrationEvent(sagaContext.ReservationId, sagaContext.BookingId));
+
+        Assert.That(await _sagaHarness.Consumed.Any<SeatReservationTimedOutIntegrationEvent>(message =>
+                    message.Context.Message.ReservationId == sagaContext.ReservationId &&
+                    message.Context.Message.BookingId == sagaContext.BookingId),
+                Is.True);
+
+        Assert.That(await _harness.Published.Any<CancelBookingCommand>(), Is.True);
+        Assert.That(await _harness.Published.Any<ReleaseSeatReservationCommand>(), Is.True);
+
+        Guid? existsId = await _sagaHarness.Exists(sagaContext.ReservationId, x => x.Cancelling);
+        Assert.That(existsId.HasValue, Is.True, "Saga did not exist");
+    }
+
+    [Test]
+    public async Task PaymentRequested_WhenPendingPayment_ShouldCancelBookingExpirationSchedule()
+    {
+        var sagaContext = await CreateSagaInReservingSeat();
+        await CreateSagaInPendingPayment(sagaContext);
+
+        var sagaBefore = _sagaHarness.Sagas.Contains(sagaContext.ReservationId);
+
+        await _harness.Bus.Publish(new PaymentRequestedIntegrationEvent(sagaContext.ReservationId, sagaContext.BookingId, UserId, TotalPrice));
+        Assert.That(await _sagaHarness.Consumed.Any<PaymentRequestedIntegrationEvent>(message =>
+                message.Context.Message.ReservationId == sagaContext.ReservationId),
+            Is.True);
+
+        Assert.That(await _harness.Published.Any<ExtendSeatHoldCommand>(), Is.True);   
+
+        Assert.That(await _sagaHarness.Exists(sagaContext.ReservationId, state => state.ExtendingSeatHold), Is.EqualTo(sagaContext.ReservationId));
+
+        Assert.That(_sagaHarness.Sagas.Contains(sagaContext.ReservationId)!.PendingPaymentExpirationTokenId, Is.Null,"Schedule token was not cleared from saga");
+
+    }
+
+    [Test]
+    public async Task BookingScheduleExpired_WhenPendingPayment_ShouldReleaseReservationAndMarkBookingExpired()
+    {
+        var sagaContext = await CreateSagaInReservingSeat();
+        await CreateSagaInPendingPayment(sagaContext);
+
+        using var adjustment = new QuartzTimeAdjustment(_provider);
+        await adjustment.AdvanceTime(TimeSpan.FromMinutes(10));
+
+        Assert.That(await _harness.Published.Any<MarkBookingExpiredCommand>(message =>
+                message.Context.Message.ReservationId == sagaContext.ReservationId &&
+                message.Context.Message.BookingId == sagaContext.BookingId),
+            Is.True);
+
+        Assert.That(await _sagaHarness.Exists(sagaContext.ReservationId, state => state.Expiring), Is.EqualTo(sagaContext.ReservationId), "Saga not transition to Expiring");
+    }
+
+    [Test]
+    public async Task BookingCancellationRequest_WhenPendingPayment_ShouldCancelBookingAndReleaseSeat()
+    {
+        var sagaContext = await CreateSagaInReservingSeat();
+        await CreateSagaInPendingPayment(sagaContext);
+
+        await _harness.Bus.Publish(new BookingCancellationRequestedIntegrationEvent(sagaContext.ReservationId, sagaContext.BookingId, UserId, ShowtimeId));
+
+        Assert.That(await _sagaHarness.Consumed.Any<BookingCancellationRequestedIntegrationEvent>(message =>
+                    message.Context.Message.ReservationId == sagaContext.ReservationId &&
+                    message.Context.Message.BookingId == sagaContext.BookingId),
+                Is.True);
+
+        Assert.That(await _harness.Published.Any<CancelBookingCommand>(), Is.True);
+        Assert.That(await _harness.Published.Any<ReleaseSeatReservationCommand>(), Is.True);
+
+        Assert.That(await _sagaHarness.Exists(sagaContext.ReservationId, state => state.Cancelling), Is.EqualTo(sagaContext.ReservationId), "Saga not transition to Expiring");
+
+        Assert.That(_sagaHarness.Sagas.Contains(sagaContext.ReservationId)!.PendingPaymentExpirationTokenId, Is.Null, "Schedule token was not cleared from saga");
+    }
+
+    [Test]
+    public async Task SeatHoldExtended_WhenExtendingSeatHold_ShouldPublishRequestPaymentCommand()
+    {
+        var sagaContext = await CreateSagaInReservingSeat();
+        await CreateSagaInPendingPayment(sagaContext);
+   
+        await _harness.Bus.Publish(new PaymentRequestedIntegrationEvent(sagaContext.ReservationId, sagaContext.BookingId, UserId, TotalPrice));
+        Assert.That(await _sagaHarness.Consumed.Any<PaymentRequestedIntegrationEvent>(message =>
+                message.Context.Message.ReservationId == sagaContext.ReservationId),
+            Is.True);
+
+        Assert.That(await _sagaHarness.Exists(sagaContext.ReservationId, state => state.ExtendingSeatHold), Is.EqualTo(sagaContext.ReservationId), "Saga not transition to ExtendingSeatHold");
+        
+        await _harness.Bus.Publish(new SeatHoldExtendedIntegrationEvent(sagaContext.ReservationId, sagaContext.BookingId));
+        Assert.That(await _sagaHarness.Consumed.Any<SeatHoldExtendedIntegrationEvent>(message =>
+                message.Context.Message.ReservationId == sagaContext.ReservationId &&
+                message.Context.Message.BookingId == sagaContext.BookingId),
+            Is.True);
+
+        Assert.That(await _harness.Published.Any<RequestPaymentCommand>(), Is.True,  "Saga not publish RequestPaymentCommand");
+
+        Assert.That(await _sagaHarness.Exists(sagaContext.ReservationId, state => state.PaymentProcessing), Is.EqualTo(sagaContext.ReservationId), "Saga not transition to PaymentProcessing");
+    }
+
+    [Test]
+    public async Task SeatHoldExtensionFailed_WhenExtendingSeatHold_ShouldCancelBookingAndReleaseSeat()
+    {
+        var sagaContext = await CreateSagaInReservingSeat();
+        await CreateSagaInPendingPayment(sagaContext);
+        await CreateSagaInExtendingSeatHold(sagaContext);
+
+        await _harness.Bus.Publish(new SeatHoldExtensionFailedIntegrationEvent(sagaContext.ReservationId, sagaContext.BookingId, "Cannot extend seat hold deadline"));
+        Assert.That(await _sagaHarness.Consumed.Any<SeatHoldExtensionFailedIntegrationEvent>(message =>
+                message.Context.Message.ReservationId == sagaContext.ReservationId &&
+                message.Context.Message.BookingId == sagaContext.BookingId),
+            Is.True);
+
+
+        Assert.That(await _harness.Published.Any<CancelBookingCommand>(), Is.True);
+        Assert.That(await _harness.Published.Any<ReleaseSeatReservationCommand>(), Is.True);
+        Assert.That(await _sagaHarness.Exists(sagaContext.ReservationId, state => state.Cancelling), Is.EqualTo(sagaContext.ReservationId), "Saga not transition to Expiring");
+    }
+
+    [Test]
+    public async Task SeatHoldExtensionFault_WhenExtendingSeatHold_ShouldCancelBookingAndReleaseSeat()
+    {
+        var sagaContext = await CreateSagaInReservingSeat();
+        await CreateSagaInPendingPayment(sagaContext);
+        await CreateSagaInExtendingSeatHold(sagaContext);
+
+        Assert.That((await _sagaHarness.Exists(sagaContext.ReservationId, x => x.ExtendingSeatHold)).HasValue, Is.True, "Saga must be in ExtendingSeatHold state first");
+
+        await _harness.Bus.Publish<Fault<ExtendSeatHoldCommand>>(new
+        {
+            Message = new ExtendSeatHoldCommand(sagaContext.ReservationId, sagaContext.BookingId, ShowtimeId, UserId),    
+            Timestamp = DateTime.UtcNow,
+            Exceptions = new[] 
+            { 
+                new 
+                { 
+                    ExceptionType = "System.TimeoutException", 
+                    Message = "Simulated DB Timeout during ExtendSeatHold" 
+                } 
+            }
+        });
+
+        Assert.That(await _sagaHarness.Consumed.Any<Fault<ExtendSeatHoldCommand>>(), Is.True, "Saga did not consume the Fault event");
+
+        Assert.That(await _sagaHarness.Exists(sagaContext.ReservationId, state => state.Cancelling), Is.EqualTo(sagaContext.ReservationId), "Saga not transition to PaymentProcessing");
+    }
+
+    [Test]
+    public async Task PaymentSucceeded_WhenPaymentProcessing_ShouldConfirmSeatReservation()
+    {
+        var sagaContext = await CreateSagaInReservingSeat();
+        await CreateSagaInPendingPayment(sagaContext);
+        await CreateSagaInExtendingSeatHold(sagaContext);
+
+        await _harness.Bus.Publish(new SeatHoldExtendedIntegrationEvent(sagaContext.ReservationId, sagaContext.BookingId));
+        Assert.That(await _sagaHarness.Consumed.Any<SeatHoldExtendedIntegrationEvent>(message =>
+                message.Context.Message.ReservationId == sagaContext.ReservationId &&
+                message.Context.Message.BookingId == sagaContext.BookingId),
+            Is.True);
+        Assert.That(await _sagaHarness.Exists(sagaContext.ReservationId, state => state.PaymentProcessing), Is.EqualTo(sagaContext.ReservationId), "Saga not transition to PaymentProcessing");
+
+        await _harness.Bus.Publish(new PaymentSucceededIntegrationEvent(sagaContext.ReservationId, sagaContext.BookingId, sagaContext.PaymentId));
+
+        Assert.That(await _harness.Published.Any<ConfirmSeatReservationCommand>(), Is.True,  "Saga not publish ConfirmSeatReservationCommand");
+        Assert.That(await _sagaHarness.Exists(sagaContext.ReservationId, state => state.ConfirmingSeats), Is.EqualTo(sagaContext.ReservationId), "Saga not transition to ConfirmingSeats");
+    }
+
+    [Test]
+    public async Task SeatsConfirmed_WhenConfirmingSeats_ShouldMarkBookingPaid()
+    {
+        var sagaContext = await CreateSagaInReservingSeat();
+        await CreateSagaInPendingPayment(sagaContext);
+        await CreateSagaInExtendingSeatHold(sagaContext);
+
+        await _harness.Bus.Publish(new SeatHoldExtendedIntegrationEvent(sagaContext.ReservationId, sagaContext.BookingId));
+        Assert.That(await _sagaHarness.Consumed.Any<SeatHoldExtendedIntegrationEvent>(message =>
+                message.Context.Message.ReservationId == sagaContext.ReservationId &&
+                message.Context.Message.BookingId == sagaContext.BookingId),
+            Is.True);
+        Assert.That(await _sagaHarness.Exists(sagaContext.ReservationId, state => state.PaymentProcessing), Is.EqualTo(sagaContext.ReservationId), "Saga not transition to PaymentProcessing");
+
+        await _harness.Bus.Publish(new PaymentSucceededIntegrationEvent(sagaContext.ReservationId, sagaContext.BookingId, sagaContext.PaymentId));
+        Assert.That(await _sagaHarness.Exists(sagaContext.ReservationId, state => state.ConfirmingSeats), Is.EqualTo(sagaContext.ReservationId), "Saga not transition to ConfirmingSeats");
+
+        await _harness.Bus.Publish(new SeatReservationConfirmedIntegrationEvent(sagaContext.ReservationId, sagaContext.BookingId));
+        Assert.That(await _sagaHarness.Exists(sagaContext.ReservationId, state => state.CompletingBooking), Is.EqualTo(sagaContext.ReservationId), "Saga not transition to CompletingBooking");
+    }
+    
+    [Test]
+    public async Task BookingPaid_WhenCompletingBooking_ShouldFinalizeSaga()
+    {
+        var sagaContext = await CreateSagaInReservingSeat();
+        await CreateSagaInPendingPayment(sagaContext);
+        await CreateSagaInExtendingSeatHold(sagaContext);
+
+        await _harness.Bus.Publish(new SeatHoldExtendedIntegrationEvent(sagaContext.ReservationId, sagaContext.BookingId));
+        Assert.That(await _sagaHarness.Consumed.Any<SeatHoldExtendedIntegrationEvent>(message =>
+                message.Context.Message.ReservationId == sagaContext.ReservationId &&
+                message.Context.Message.BookingId == sagaContext.BookingId),
+            Is.True);
+        Assert.That(await _sagaHarness.Exists(sagaContext.ReservationId, state => state.PaymentProcessing), Is.EqualTo(sagaContext.ReservationId), "Saga not transition to PaymentProcessing");
+
+        await _harness.Bus.Publish(new PaymentSucceededIntegrationEvent(sagaContext.ReservationId, sagaContext.BookingId, sagaContext.PaymentId));
+        Assert.That(await _sagaHarness.Exists(sagaContext.ReservationId, state => state.ConfirmingSeats), Is.EqualTo(sagaContext.ReservationId), "Saga not transition to ConfirmingSeats");
+
+        await _harness.Bus.Publish(new SeatReservationConfirmedIntegrationEvent(sagaContext.ReservationId, sagaContext.BookingId));
+        Assert.That(await _sagaHarness.Exists(sagaContext.ReservationId, state => state.CompletingBooking), Is.EqualTo(sagaContext.ReservationId), "Saga not transition to CompletingBooking");
+
+        await _harness.Bus.Publish(new BookingStatusChangedToPaidIntegrationEvent(sagaContext.ReservationId, sagaContext.BookingId));
+        
+        Assert.That(await _sagaHarness.NotExists(sagaContext.ReservationId), Is.Null, "Saga was not removed after finalization");
+    }
+
+}
+
+
