@@ -35,12 +35,14 @@ var catalogApi = builder.AddProject<Projects.Catalog_API>("catalog-api")
     .WithReference(rabbitMq).WaitFor(rabbitMq)
     .WithReference(cache)
     .WithReference(catalogDb)
-    .WithHttpHealthCheck("/health");
+    // .WithHttpHealthCheck("/health");
+    .WithHttpHealthCheck("/health/ready");
 
 
 var SeatApi = builder.AddProject<Projects.Seat_API>("seat-api")
     .WithReference(cache)
-    .WithReference(rabbitMq).WaitFor(rabbitMq);
+    .WithReference(rabbitMq).WaitFor(rabbitMq)
+    .WithHttpHealthCheck("/health/ready");
 
 
 cache.WithParentRelationship(SeatApi);
@@ -51,10 +53,19 @@ var bookingApi = builder.AddProject<Projects.Booking_API>("booking-api")
     .WithReference(sagaDb).WaitFor(sagaDb)
     .WithReference(SeatApi)
     .WaitFor(SeatApi)
-    .WithHttpHealthCheck("/health");
+    // .WithHttpHealthCheck("/health");
+    .WithHttpHealthCheck("/health/ready");
 
 var paymentApi = builder.AddProject<Projects.Payment_API>("payment-api")
     .WithReference(rabbitMq).WaitFor(rabbitMq)
-    .WithHttpHealthCheck("/health");
+    // .WithHttpHealthCheck("/health");
+    .WithHttpHealthCheck("/health/ready");
+
+var gatewayApi = builder.AddProject<Projects.Gateway_API>("gateway-api")
+    .WithReference(catalogApi).WaitFor(catalogApi)
+    .WithReference(SeatApi).WaitFor(SeatApi)
+    .WithReference(bookingApi).WaitFor(bookingApi)
+    .WithHttpHealthCheck("/health/ready")
+    .WithExternalHttpEndpoints();
 
 builder.Build().Run();

@@ -19,7 +19,10 @@ public static class CatalogApi
         .WithName("CreateMovie")
         .WithDescription("Creates a new movie in the catalog.")
         .Produces(StatusCodes.Status201Created)
-        .Produces(StatusCodes.Status400BadRequest);
+        .Produces(StatusCodes.Status400BadRequest)
+        // Master-data endpoint remains callable directly for Postman setup,
+        // but is not part of the booking-client OpenAPI contract.
+        .ExcludeFromDescription();
 
         group.MapPut("/{id:int}", async (int id, UpdateMovieCommand command, IMediator mediator) =>
         {
@@ -36,7 +39,8 @@ public static class CatalogApi
         .WithDescription("Updates an existing movie in the catalog.")
         .Produces(StatusCodes.Status204NoContent)
         .Produces(StatusCodes.Status400BadRequest)
-        .Produces(StatusCodes.Status404NotFound);
+        .Produces(StatusCodes.Status404NotFound)
+        .ExcludeFromDescription();
 
         // Don't MapGet or MapDelete in Comamnd
         group.MapDelete("/{id:int}", async (int id, IMediator mediator) =>
@@ -50,7 +54,8 @@ public static class CatalogApi
         .WithName("DeleteMovie")
         .WithDescription("Deletes a movie from the catalog.")
         .Produces(StatusCodes.Status204NoContent)
-        .Produces(StatusCodes.Status404NotFound);
+        .Produces(StatusCodes.Status404NotFound)
+        .ExcludeFromDescription();
 
         group.MapGet("/movies", async (IMediator mediator) =>
         {
@@ -93,7 +98,9 @@ public static class CatalogApi
         .WithName("Create Showtime")
         .WithDescription("Creates a showtime in the catalog.")
         .Produces(StatusCodes.Status201Created)
-        .Produces(StatusCodes.Status400BadRequest);
+        .Produces(StatusCodes.Status400BadRequest)
+        // Kept for direct Postman use until a web-admin exists.
+        .ExcludeFromDescription();
 
         return endpoints;
     }

@@ -3,7 +3,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
 builder.AddApplicationServices();
-builder.Services.AddProblemDetails();
+// builder.Services.AddProblemDetails();
+builder.AddDefaultProblemDetails();
 
 var withApiVersioning = builder.Services.AddApiVersioning(options =>
 {
@@ -13,6 +14,8 @@ var withApiVersioning = builder.Services.AddApiVersioning(options =>
 builder.AddDefaultOpenApi(withApiVersioning);
 
 var app = builder.Build();
+
+app.UseDefaultProblemDetails();
 
 app.MapDefaultEndpoints();
 

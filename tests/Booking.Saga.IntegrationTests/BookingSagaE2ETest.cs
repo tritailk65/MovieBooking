@@ -16,8 +16,6 @@ using Catalog.API;
 using Catalog.API.Application.Showtimes.Commands.CreateShowtime;
 using Catalog.API.Infrastucture;
 using Catalog.API.IntegrationEvents;
-// Old service-local contract:
-// using Catalog.API.IntegrationEvents.Event;
 using IntegrationEventLogEF.Services;
 using MassTransit;
 using MassTransit.Testing;

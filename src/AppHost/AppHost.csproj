@@ -19,6 +19,7 @@
     <ProjectReference Include="../Payment.API/Payment.API.csproj" />
     <ProjectReference Include="../Catalog.API/Catalog.API.csproj" />
     <ProjectReference Include="../Seat.API/Seat.API.csproj" />
+    <ProjectReference Include="../Gateway.API/Gateway.API.csproj" />
   </ItemGroup>
 
 </Project>

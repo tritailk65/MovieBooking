@@ -10,7 +10,9 @@ public static class BookingApi
         var api = app.MapGroup("api/booking").HasApiVersion(1.0);
 
         api.MapPost("/from-reservation", CreateBookingAsync);//.RequireAuthorization(PermissionPolicies.Require("booking.write"));
-        api.MapPost("/draft", CreateBookingDraftAsync);//.RequireAuthorization(PermissionPolicies.Require("booking.write"));
+        api.MapPost("/draft", CreateBookingDraftAsync)
+            // Draft is an internal/legacy operation and is intentionally absent from client OpenAPI.
+            .ExcludeFromDescription();//.RequireAuthorization(PermissionPolicies.Require("booking.write"));
 
         // Begin check out, nên là put vì chuyển status booking sang awaiting payment
         api.MapPut("/payment", ChangeToAwaitingPaymentAsync);//.RequireAuthorization(PermissionPolicies.Require("booking.write"));
@@ -56,7 +58,8 @@ public static class BookingApi
         return await mediator.Send(command with { seats = snapshotSeats }, cancellationToken);
     }
 
-    public static async Task<Results<Ok<string>, BadRequest<string>>> ChangeToAwaitingPaymentAsync(SetAwaitingPaymentBookingStatusCommand command, IMediator mediator)
+    // public static async Task<Results<Ok<string>, BadRequest<string>>> ChangeToAwaitingPaymentAsync(...)
+    public static async Task<Results<Ok<string>, ProblemHttpResult>> ChangeToAwaitingPaymentAsync(SetAwaitingPaymentBookingStatusCommand command, IMediator mediator)
     {
         var result = await mediator.Send(command);
         if (result)
@@ -65,14 +68,17 @@ public static class BookingApi
         } 
         else
         {
-            return TypedResults.BadRequest($"Change status waiting payment failed");
+            return TypedResults.Problem(
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "Booking cannot start payment",
+                detail: "The booking could not be changed to awaiting-payment status.");
         }
     }
 
     // Old response only returned a text message containing RequestId, so the app
     // could not call the payment endpoint which requires BookingId.
     // public static async Task<Results<Ok<string>, BadRequest<string>>> CreateBookingAsync(...)
-    public static async Task<Results<Created<CreateBookingResponse>, BadRequest<string>>> CreateBookingAsync(
+    public static async Task<Results<Created<CreateBookingResponse>, ProblemHttpResult>> CreateBookingAsync(
         [FromBody] FromReservationRequest request,
         SeatGrpc.SeatGrpcClient seatClient,
         IMediator mediator,
@@ -88,7 +94,10 @@ public static class BookingApi
 
         if (!validation.Success)
         {
-            return TypedResults.BadRequest($"Validation seat reservation failed - ReservationId: {request.reservationId}");
+            return TypedResults.Problem(
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "Seat reservation is invalid",
+                detail: $"The reservation could not be validated. ReservationId: {request.reservationId}");
         }
 
         // Lấy dữ liệu từ seat service
@@ -113,8 +122,10 @@ public static class BookingApi
 
             if (!bookingId.HasValue)
             {
-                return TypedResults.BadRequest(
-                    $"Booking was created but could not be loaded - ReservationId: {request.reservationId}");
+                return TypedResults.Problem(
+                    statusCode: StatusCodes.Status500InternalServerError,
+                    title: "Booking could not be loaded",
+                    detail: $"The booking was created but could not be loaded. ReservationId: {request.reservationId}");
             }
 
 
@@ -129,7 +140,10 @@ public static class BookingApi
         }
         else
         {
-            return TypedResults.BadRequest($"CreateOrderCommand failed - RequestId: {requestId}");
+            return TypedResults.Problem(
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "Booking could not be created",
+                detail: $"The booking request failed. RequestId: {requestId}");
         }
     }
 
@@ -139,7 +153,7 @@ public static class BookingApi
         return TypedResults.Ok(cardType);
     }
 
-    public static async Task<Results<Ok<BookingVM>, NotFound>> GetBookingAsync (int bookingId, [AsParameters] BookingService bookingService)
+    public static async Task<Results<Ok<BookingVM>, ProblemHttpResult>> GetBookingAsync (int bookingId, [AsParameters] BookingService bookingService)
     {
         try
         {
@@ -147,16 +161,22 @@ public static class BookingApi
             return TypedResults.Ok(booking);
         } catch
         {
-            return TypedResults.NotFound();
+            return TypedResults.Problem(
+                statusCode: StatusCodes.Status404NotFound,
+                title: "Booking not found",
+                detail: $"Booking {bookingId} does not exist.");
         }
     }
-    public static async Task<Results<Ok<IEnumerable<BookingVM>>, NotFound>> GetBookingByUserAsync (string userId, [AsParameters] BookingService bookingService)
+    public static async Task<Results<Ok<IEnumerable<BookingVM>>, ProblemHttpResult>> GetBookingByUserAsync (string userId, [AsParameters] BookingService bookingService)
     {
         // Tam thoi truyen user id thong qua parameter, khi cos identity, lay userid qua indentityservice
         var booking = await bookingService.BookingQueries.GetBookingFromUserAsync(userId);
         if(booking is null)
         {
-            return TypedResults.NotFound();
+            return TypedResults.Problem(
+                statusCode: StatusCodes.Status404NotFound,
+                title: "Bookings not found",
+                detail: $"No booking was found for user {userId}.");
         }
         return TypedResults.Ok(booking);
     }

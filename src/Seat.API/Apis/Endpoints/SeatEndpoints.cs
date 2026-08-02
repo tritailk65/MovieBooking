@@ -53,7 +53,11 @@ public static class SeatEndpoints
             }
             
             // Trả về 409 Conflict tranh chấp tài nguyên thất bại
-            return Results.Conflict(new { Message = "This seat have been ordered" });
+            // return Results.Conflict(new { Message = "This seat have been ordered" });
+            return Results.Problem(
+                statusCode: StatusCodes.Status409Conflict,
+                title: "Seat is no longer available",
+                detail: "One or more selected seats have already been locked or booked.");
         });
         //.RequireAuthorization(PermissionPolicies.Require("seat.write"));
 
@@ -66,7 +70,11 @@ public static class SeatEndpoints
             {
                 return Results.Ok(new {Message = "Released seat successfully"});
             }
-            return Results.Conflict(new {Mesage = "Release seat fail, seat already have been booking or ordered"});
+            // return Results.Conflict(new {Mesage = "Release seat fail, seat already have been booking or ordered"});
+            return Results.Problem(
+                statusCode: StatusCodes.Status409Conflict,
+                title: "Seat reservation could not be released",
+                detail: "The seat has already been booked or the reservation is no longer valid.");
        });
        //.RequireAuthorization(PermissionPolicies.Require("seat.write"));
 
@@ -79,7 +87,8 @@ public static class SeatEndpoints
                 return Results.Ok(new {Message = "Mark seat sold successfully"});
             }
             return Results.Conflict(new {Mesage = "Mark seat sold fail, seat already have been booking or ordered"});
-        });
+        })
+        .ExcludeFromDescription();
         //.RequireAuthorization(PermissionPolicies.Require("seat.write"));
 
         // Endpoint release reservation khi user quyết định thanh toán
@@ -93,7 +102,8 @@ public static class SeatEndpoints
                 return Results.Ok(new {Message = "Release reservation successfully"});
             }
             return Results.Conflict(new {Mesage = "Release seat reservation fail"});
-        });
+        })
+        .ExcludeFromDescription();
         //.RequireAuthorization(PermissionPolicies.Require("seat.write"));
         
         // Validation và bắt đầu chuyển qua booking service
@@ -106,7 +116,8 @@ public static class SeatEndpoints
                 return Results.Ok(result);
             }
             return Results.Conflict(new {Mesage = "Validation seat reservation fail"});
-        });
+        })
+        .ExcludeFromDescription();
         //.RequireAuthorization(PermissionPolicies.Require("seat.write"));
         
         // KHi user payment thanh toan thanh cong

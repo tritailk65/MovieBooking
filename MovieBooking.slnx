@@ -13,6 +13,7 @@
     <Project Path="src/Booking.Infrastructure/Booking.Infrastructure.csproj" />
     <Project Path="src/EventBus/EventBus.csproj" />
     <Project Path="src/EventBusRabbitMq/EventBusRabbitMq.csproj" />
+    <Project Path="src/Gateway.API/Gateway.API.csproj" />
     <Project Path="src/IntergrationEventLogEF/IntergrationEventLogEF.csproj" />
     <Project Path="src/Payment.API/Payment.API.csproj" />
     <Project Path="src/Seat.API/Seat.API.csproj" />

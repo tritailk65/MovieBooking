@@ -5,7 +5,8 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.AddBasicServiceDefaults();
 builder.AddApplicationServices();
-builder.Services.AddProblemDetails();
+// builder.Services.AddProblemDetails();
+builder.AddDefaultProblemDetails();
 
 var withApiVersioning = builder.Services.AddApiVersioning(options =>
 {
@@ -19,9 +20,11 @@ builder.Services.AddGrpc();
 
 var app = builder.Build();
 
+app.UseDefaultProblemDetails();
+
 app.MapDefaultEndpoints();
 
-app.UseStatusCodePages();
+// app.UseStatusCodePages(); // Included in UseDefaultProblemDetails().
 
 // app.UseAuthentication();
 // app.UseAuthorization();
