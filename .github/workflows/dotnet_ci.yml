@@ -1,0 +1,65 @@
+name: dotnet-ci
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore MovieBooking.slnx
+
+      - name: Build
+        run: dotnet build MovieBooking.slnx --configuration Release --no-restore
+
+      - name: Test Catalog
+        run: dotnet test tests/Catalog.API.UnitTests/Catalog.API.UnitTests.csproj --configuration Release --no-build --logger trx
+
+      - name: Test Seat
+        run: dotnet test tests/Seat.API.UnitTests/Seat.API.UnitTests.csproj --configuration Release --no-build --logger trx
+
+      - name: Test Booking Domain
+        run: dotnet test tests/Booking.Domain.UnitTests/Booking.Domain.UnitTests.csproj --configuration Release --no-build --logger trx
+
+  docker-build:
+    runs-on: ubuntu-latest
+    needs: build-test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Catalog image
+        run: docker build -t moviebooking-catalog:${{ github.sha }} -f src/Catalog.API/Dockerfile .
+
+      - name: Build Seat image
+        run: docker build -t moviebooking-seat:${{ github.sha }} -f src/Seat.API/Dockerfile .
+
+      - name: Build Booking image
+        run: docker build -t moviebooking-booking:${{ github.sha }} -f src/Booking.API/Dockerfile .
+
+      - name: Build Payment image
+        run: docker build -t moviebooking-payment:${{ github.sha }} -f src/Payment.API/Dockerfile .
+
+      - name: Build Gateway image
+        run: docker build -t moviebooking-gateway:${{ github.sha }} -f src/Gateway.API/Dockerfile .
+
+      - name: Validate development Compose configuration
+        run: docker compose config --quiet
+
+      - name: Validate staging deployment configuration
+        run: docker compose --env-file deploy/environments/.env.staging.example -f docker-compose.deploy.yml config --quiet
+
+      - name: Validate production deployment configuration
+        run: docker compose --env-file deploy/environments/.env.production.example -f docker-compose.deploy.yml config --quiet

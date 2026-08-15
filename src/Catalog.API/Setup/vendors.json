@@ -1,0 +1,269 @@
+[
+  {
+    "Id": "1",
+    "Name": "CGV Cinemas",
+    "LogoUrl": "https://example.com/logos/cgv.png",
+    "Cinemas": [
+      {
+        "Id": "1",
+        "VendorId": "1",
+        "Name": "CGV Landmark 81",
+        "Address": "Tầng B1, Vincom Center Landmark 81, 722 Điện Biên Phủ, Bình Thạnh",
+        "City": "Hồ Chí Minh",
+        "Halls": [
+          {
+            "Id": "1",
+            "CinemaId": "1",
+            "Name": "IMAX 01",
+            "Seats": [
+              {
+                "Id": "1",
+                "HallId": "1",
+                "Row": "A",
+                "Number": 1
+              },
+              {
+                "Id": "2",
+                "HallId": "1",
+                "Row": "B",
+                "Number": 1
+              }
+            ]
+          },
+          {
+            "Id": "2",
+            "CinemaId": "1",
+            "Name": "Standard 02",
+            "Seats": [
+              {
+                "Id": "3",
+                "HallId": "2",
+                "Row": "A",
+                "Number": 1
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "Id": "2",
+        "VendorId": "1",
+        "Name": "CGV Aeon Mall Tân Phú",
+        "Address": "Tầng 3, Aeon Mall, 30 Bờ Bao Tân Thắng, Tân Phú",
+        "City": "Hồ Chí Minh",
+        "Halls": [
+          {
+            "Id": "3",
+            "CinemaId": "2",
+            "Name": "4DX",
+            "Seats": [
+              {
+                "Id": "4",
+                "HallId": "3",
+                "Row": "A",
+                "Number": 1
+              }
+            ]
+          },
+          {
+            "Id": "4",
+            "CinemaId": "2",
+            "Name": "Sweetbox 01",
+            "Seats": [
+              {
+                "Id": "5",
+                "HallId": "4",
+                "Row": "A",
+                "Number": 1
+              },
+              {
+                "Id": "6",
+                "HallId": "4",
+                "Row": "B",
+                "Number": 1
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "Id": "2",
+    "Name": "Beta Cinemas",
+    "LogoUrl": "https://example.com/logos/beta.png",
+    "Cinemas": [
+      {
+        "Id": "3",
+        "VendorId": "2",
+        "Name": "Beta Quang Trung",
+        "Address": "645 Quang Trung, Phường 11, Gò Vấp",
+        "City": "Hồ Chí Minh",
+        "Halls": [
+          {
+            "Id": "5",
+            "CinemaId": "3",
+            "Name": "Rạp 1",
+            "Seats": [
+              {
+                "Id": "7",
+                "HallId": "5",
+                "Row": "A",
+                "Number": 1
+              },
+              {
+                "Id": "8",
+                "HallId": "5",
+                "Row": "B",
+                "Number": 1
+              }
+            ]
+          },
+          {
+            "Id": "6",
+            "CinemaId": "3",
+            "Name": "Rạp 2",
+            "Seats": [
+              {
+                "Id": "9",
+                "HallId": "6",
+                "Row": "A",
+                "Number": 1
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "Id": "4",
+        "VendorId": "2",
+        "Name": "Beta Trần Quang Khải",
+        "Address": "Tầng 2, Imperial Plaza, 89 Trần Quang Khải, Quận 1",
+        "City": "Hồ Chí Minh",
+        "Halls": [
+          {
+            "Id": "7",
+            "CinemaId": "4",
+            "Name": "Rạp VIP",
+            "Seats": [
+              {
+                "Id": "10",
+                "HallId": "7",
+                "Row": "A",
+                "Number": 1
+              }
+            ]
+          },
+          {
+            "Id": "8",
+            "CinemaId": "4",
+            "Name": "Rạp 4",
+            "Seats": [
+              {
+                "Id": "11",
+                "HallId": "8",
+                "Row": "A",
+                "Number": 1
+              },
+              {
+                "Id": "12",
+                "HallId": "8",
+                "Row": "B",
+                "Number": 1
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "Id": "3",
+    "Name": "Lotte Cinema",
+    "LogoUrl": "https://example.com/logos/lotte.png",
+    "Cinemas": [
+      {
+        "Id": "5",
+        "VendorId": "3",
+        "Name": "Lotte Nam Sài Gòn",
+        "Address": "Tầng 3 Lotte Mart, 469 Nguyễn Hữu Thọ, Quận 7",
+        "City": "Hồ Chí Minh",
+        "Halls": [
+          {
+            "Id": "9",
+            "CinemaId": "5",
+            "Name": "Superplex",
+            "Seats": [
+              {
+                "Id": "13",
+                "HallId": "9",
+                "Row": "A",
+                "Number": 1
+              },
+              {
+                "Id": "14",
+                "HallId": "9",
+                "Row": "B",
+                "Number": 1
+              }
+            ]
+          },
+          {
+            "Id": "10",
+            "CinemaId": "5",
+            "Name": "Standard 2",
+            "Seats": [
+              {
+                "Id": "15",
+                "HallId": "10",
+                "Row": "A",
+                "Number": 1
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "Id": "6",
+        "VendorId": "3",
+        "Name": "Lotte Gò Vấp",
+        "Address": "Tầng 3 Lotte Mart, 242 Nguyễn Văn Lượng, Gò Vấp",
+        "City": "Hồ Chí Minh",
+        "Halls": [
+          {
+            "Id": "11",
+            "CinemaId": "6",
+            "Name": "CineComfort",
+            "Seats": [
+              {
+                "Id": "16",
+                "HallId": "11",
+                "Row": "A",
+                "Number": 1
+              },
+              {
+                "Id": "17",
+                "HallId": "11",
+                "Row": "B",
+                "Number": 1
+              }
+            ]
+          },
+          {
+            "Id": "12",
+            "CinemaId": "6",
+            "Name": "Standard 3",
+            "Seats": [
+              {
+                "Id": "18",
+                "HallId": "12",
+                "Row": "A",
+                "Number": 1
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+]

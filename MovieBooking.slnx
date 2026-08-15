@@ -1,0 +1,30 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+    <File Path="Directory.Packages.props" />
+    <File Path="NuGet.config" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/AppHost/AppHost.csproj" Id="4180b46b-3ce5-401e-99ab-2b144bf3e86d" />
+    <Project Path="src/Catalog.API/Catalog.API.csproj" />
+    <Project Path="src/ServiceDefaults/ServiceDefaults.csproj" />
+    <Project Path="src/Booking.API/Booking.API.csproj" />
+    <Project Path="src/Booking.Domain/Booking.Domain.csproj" />
+    <Project Path="src/Booking.Infrastructure/Booking.Infrastructure.csproj" />
+    <Project Path="src/EventBus/EventBus.csproj" />
+    <Project Path="src/EventBusRabbitMq/EventBusRabbitMq.csproj" />
+    <Project Path="src/Gateway.API/Gateway.API.csproj" />
+    <Project Path="src/IntergrationEventLogEF/IntergrationEventLogEF.csproj" />
+    <Project Path="src/Payment.API/Payment.API.csproj" />
+    <Project Path="src/Seat.API/Seat.API.csproj" />
+    <Project Path="src/SagaOrchestration/SagaOrchestration.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Booking.API.UnitTests/Booking.API.UnitTests.csproj" />
+    <Project Path="tests/Booking.Domain.UnitTests/Booking.Domain.UnitTests.csproj" />
+    <Project Path="tests/Catalog.API.UnitTests/Catalog.API.UnitTests.csproj" />
+    <Project Path="tests/Seat.API.UnitTests/Seat.API.UnitTests.csproj" />
+    <Project Path="tests/Booking.Saga.IntegrationTests/Booking.Saga.IntegrationTests.csproj" />
+  </Folder>
+
+</Solution>

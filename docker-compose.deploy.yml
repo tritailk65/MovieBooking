@@ -1,0 +1,189 @@
+services:
+  ingress:
+    image: nginx:1.28-alpine
+    restart: unless-stopped
+    environment:
+      PUBLIC_HOST: ${PUBLIC_HOST:?Set PUBLIC_HOST}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./deploy/nginx/default.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ${TLS_CERT_PATH:?Set TLS_CERT_PATH}:/etc/nginx/tls/tls.crt:ro
+      - ${TLS_KEY_PATH:?Set TLS_KEY_PATH}:/etc/nginx/tls/tls.key:ro
+    depends_on:
+      gateway-api:
+        condition: service_started
+    networks:
+      - edge
+
+  gateway-api:
+    image: ${CONTAINER_REGISTRY:?Set CONTAINER_REGISTRY}/moviebooking-gateway:${IMAGE_TAG:?Set IMAGE_TAG}
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:?Set ASPNETCORE_ENVIRONMENT}
+      ASPNETCORE_FORWARDEDHEADERS_ENABLED: "false"
+      ASPNETCORE_URLS: http://+:8080
+      AllowedHosts: ${PUBLIC_HOST:?Set PUBLIC_HOST}
+      Https__RedirectAtGateway: "false"
+      Https__UseHsts: "true"
+      ForwardedHeaders__KnownIPNetworks__0: ${EDGE_NETWORK_SUBNET:?Set EDGE_NETWORK_SUBNET}
+      ForwardedHeaders__AllowedHosts__0: ${PUBLIC_HOST:?Set PUBLIC_HOST}
+      ReverseProxy__Clusters__catalog__Destinations__catalog-api__Address: http://catalog-api:8080
+      ReverseProxy__Clusters__seat__Destinations__seat-api__Address: http://seat-api:8080
+      ReverseProxy__Clusters__booking__Destinations__booking-api__Address: http://booking-api:8080
+    expose:
+      - "8080"
+    depends_on:
+      catalog-api:
+        condition: service_started
+      seat-api:
+        condition: service_started
+      booking-api:
+        condition: service_started
+    networks:
+      - edge
+      - backend
+
+  postgres:
+    image: ankane/pgvector:latest
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?Set POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      POSTGRES_DB: postgres
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./docker/postgres/init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql:ro
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U ${POSTGRES_USER}" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - backend
+
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    command: [ "redis-server", "--requirepass", "${REDIS_PASSWORD:?Set REDIS_PASSWORD}" ]
+    healthcheck:
+      test: [ "CMD-SHELL", "redis-cli -a '${REDIS_PASSWORD}' ping | grep PONG" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - backend
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:?Set RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?Set RABBITMQ_PASSWORD}
+    healthcheck:
+      test: [ "CMD", "rabbitmq-diagnostics", "-q", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - backend
+
+  catalog-api:
+    image: ${CONTAINER_REGISTRY:?Set CONTAINER_REGISTRY}/moviebooking-catalog:${IMAGE_TAG:?Set IMAGE_TAG}
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:?Set ASPNETCORE_ENVIRONMENT}
+      ASPNETCORE_FORWARDEDHEADERS_ENABLED: "false"
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__catalogdb: Host=postgres;Port=5432;Database=catalogdb;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      ConnectionStrings__redis: redis:6379,password=${REDIS_PASSWORD},abortConnect=false
+      ConnectionStrings__eventbus: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD_URI:?Set RABBITMQ_PASSWORD_URI}@rabbitmq:5672
+    expose:
+      - "8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - backend
+
+  seat-api:
+    image: ${CONTAINER_REGISTRY:?Set CONTAINER_REGISTRY}/moviebooking-seat:${IMAGE_TAG:?Set IMAGE_TAG}
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:?Set ASPNETCORE_ENVIRONMENT}
+      ASPNETCORE_FORWARDEDHEADERS_ENABLED: "false"
+      Kestrel__Endpoints__Http__Url: http://+:8080
+      Kestrel__Endpoints__Http__Protocols: Http1
+      Kestrel__Endpoints__Grpc__Url: http://+:8081
+      Kestrel__Endpoints__Grpc__Protocols: Http2
+      ConnectionStrings__redis: redis:6379,password=${REDIS_PASSWORD},abortConnect=false
+      ConnectionStrings__eventbus: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD_URI:?Set RABBITMQ_PASSWORD_URI}@rabbitmq:5672
+    expose:
+      - "8080"
+      - "8081"
+    depends_on:
+      redis:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - backend
+
+  booking-api:
+    image: ${CONTAINER_REGISTRY:?Set CONTAINER_REGISTRY}/moviebooking-booking:${IMAGE_TAG:?Set IMAGE_TAG}
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:?Set ASPNETCORE_ENVIRONMENT}
+      ASPNETCORE_FORWARDEDHEADERS_ENABLED: "false"
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__bookingDb: Host=postgres;Port=5432;Database=bookingdb;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      ConnectionStrings__sagadb: Host=postgres;Port=5432;Database=sagadb;Username=${POSTGRES_USER};Password=${POSTGRES_PASSWORD}
+      ConnectionStrings__eventbus: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD_URI:?Set RABBITMQ_PASSWORD_URI}@rabbitmq:5672
+      Grpc__SeatUrl: http://seat-api:8081
+    expose:
+      - "8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      seat-api:
+        condition: service_started
+    networks:
+      - backend
+
+  payment-api:
+    image: ${CONTAINER_REGISTRY:?Set CONTAINER_REGISTRY}/moviebooking-payment:${IMAGE_TAG:?Set IMAGE_TAG}
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:?Set ASPNETCORE_ENVIRONMENT}
+      ASPNETCORE_FORWARDEDHEADERS_ENABLED: "false"
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__EventBus: amqp://${RABBITMQ_USER}:${RABBITMQ_PASSWORD_URI:?Set RABBITMQ_PASSWORD_URI}@rabbitmq:5672
+      PaymentOptions__PaymentSucceeded: ${PAYMENT_SIMULATOR_SUCCEEDS:-true}
+    expose:
+      - "8080"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - backend
+
+networks:
+  edge:
+    ipam:
+      config:
+        - subnet: ${EDGE_NETWORK_SUBNET:?Set EDGE_NETWORK_SUBNET}
+  backend:
+    internal: true
+    ipam:
+      config:
+        - subnet: ${BACKEND_NETWORK_SUBNET:?Set BACKEND_NETWORK_SUBNET}
+
+volumes:
+  postgres-data:

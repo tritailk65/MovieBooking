@@ -1,0 +1,76 @@
+syntax = "proto3";
+
+option csharp_namespace = "Seat.API.Grpc";
+
+package SeatApi;
+
+service SeatGrpc {
+  rpc GetShowtimeSeats (GetShowtimeSeatsRequest) returns (GetShowtimeSeatsResponse);
+  rpc LockSeat (LockSeatRequest) returns (LockSeatResponse);
+  rpc ValidationReservation(ValidationReservationRequest) returns (ValidationReservationResponse);
+  rpc ReleaseSeat (ReleaseSeatRequest) returns (ReleaseSeatResponse);
+  rpc ReleaseSeatReservation(ReleaseSeatReservationRequest) returns (ReleaseSeatReservationResponse);
+}
+
+message GetShowtimeSeatsRequest {
+  string showtime_id = 1;
+}
+
+message SeatModel {
+  string seat_id = 1;
+  int32 status = 2; // 0: Available, 1: Locked, 2: Sold
+  string locked_by_user_id = 3;
+  string lock_expiration_utc = 4;
+}
+
+message GetShowtimeSeatsResponse {
+  repeated SeatModel seats = 1;
+}
+
+message LockSeatRequest {
+  string showtime_id = 1;
+  string seat_id = 2;
+  string user_id = 3;
+  int32 lock_duration_seconds = 4;
+}
+
+message LockSeatResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message ReleaseSeatRequest {
+  string showtime_id = 1;
+  string seat_id = 2;
+  string user_id = 3;
+}
+
+message ReleaseSeatResponse {
+  bool success = 1;
+}
+
+message ValidationReservationRequest{
+  int32 showtimeId = 1;
+  string reservationId = 2;
+  string userId = 3;
+}
+
+message ValidationReservationResponse{
+  bool success = 1;
+  string reservationId = 2;
+  int32 showtimeId = 3;
+  string userId = 4;
+  repeated string seatIds = 5;
+  int32 remainingSeconds = 6;
+  double basePrice = 7;
+}
+
+message ReleaseSeatReservationRequest{
+  int32 showtimeId = 1;
+  string reservationId = 2;
+  string userId = 3;
+}
+
+message ReleaseSeatReservationResponse{
+  bool success = 1;
+}

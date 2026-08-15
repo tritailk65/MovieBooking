@@ -1,0 +1,15 @@
+**/.git
+**/.github
+**/.vs
+**/.vscode
+**/.idea
+**/bin
+**/obj
+**/TestResults
+**/coverage
+**/node_modules
+**/.DS_Store
+tests
+jobs
+Template
+README.md
