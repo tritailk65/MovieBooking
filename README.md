@@ -57,13 +57,7 @@ chmod +x scripts/smoke-happy-path.sh
 ```
 
 ```shell
-docker compose \
-  -f docker-compose.integration.yml \
-  -p moviebooking-integration \
-  up -d --wait
+docker compose -f docker-compose.integration.yml  -p moviebooking-integration up -d --wait
 
-docker compose \
-  -f docker-compose.integration.yml \
-  -p moviebooking-integration \
-  down -v
+docker compose -f docker-compose.integration.yml -p moviebooking-integration down -v
 ```
