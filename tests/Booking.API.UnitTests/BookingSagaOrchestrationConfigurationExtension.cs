@@ -6,6 +6,7 @@ using Quartz;
 
 public static class BookingSagaOrchestrationConfigurationExtension
 {
+    [Obsolete]
     public static IServiceCollection ConfigureMassTransit(
         this IServiceCollection services,
         Action<IBusRegistrationConfigurator>? configure = null)

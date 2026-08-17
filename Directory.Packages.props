@@ -41,7 +41,7 @@
     <PackageVersion Include="Microsoft.EntityFrameworkCore.InMemory" Version="$(DotnetPackagesVersion)" />
     <PackageVersion Include="Microsoft.Extensions.ApiDescription.Server" Version="$(DotnetPackagesVersion)" />
     <PackageVersion Include="Microsoft.Extensions.Identity.Stores" Version="$(DotnetPackagesVersion)" />
-    <PackageVersion Include="Microsoft.OpenApi" Version="2.7.0" />
+    <PackageVersion Include="Microsoft.OpenApi" Version="2.7.5" />
     <PackageVersion Include="MSTest" Version="4.0.2" />
     <!-- Version together with EF -->
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.1" />
@@ -109,9 +109,10 @@
     <PackageVersion Include="NUnit.Analyzers" Version="4.7.0"/>
     <PackageVersion Include="NUnit3TestAdapter" Version="5.0.0"/>
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.5"/>
-
-    <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.5" />    
+  
+    <!-- <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.5" />     -->
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.5"/>
+    <PackageVersion Include="MessagePack" Version="2.5.302" />
 
   </ItemGroup>
 </Project>
