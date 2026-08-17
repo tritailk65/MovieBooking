@@ -20,14 +20,9 @@ public sealed class RequestPaymentCommandConsumer(
 
         if (options.CurrentValue.PaymentSucceeded)
         {
-            await Task.Delay(
-                TimeSpan.FromSeconds(10),
-                context.CancellationToken);
+            await Task.Delay(TimeSpan.FromSeconds(10), context.CancellationToken);
 
-            await context.Publish(
-                new PaymentSucceededIntegrationEvent(
-                    message.ReservationId,
-                    message.BookingId,
+            await context.Publish(new PaymentSucceededIntegrationEvent(message.ReservationId, message.BookingId,
                     Guid.NewGuid().ToString()),
                 context.CancellationToken);
 

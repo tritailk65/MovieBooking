@@ -8,6 +8,8 @@ COPY src/Payment.API/Payment.API.csproj src/Payment.API/
 COPY src/EventBus/EventBus.csproj src/EventBus/
 COPY src/EventBusRabbitMq/EventBusRabbitMq.csproj src/EventBusRabbitMq/
 COPY src/ServiceDefaults/ServiceDefaults.csproj src/ServiceDefaults/
+COPY src/SagaOrchestration/SagaOrchestration.csproj src/SagaOrchestration/
+COPY src/IntergrationEventLogEF/IntergrationEventLogEF.csproj src/IntergrationEventLogEF/
 
 RUN dotnet restore src/Payment.API/Payment.API.csproj
 

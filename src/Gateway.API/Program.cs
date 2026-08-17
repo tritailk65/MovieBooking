@@ -1,4 +1,5 @@
 using Gateway.API;
+using Scalar.AspNetCore;
 using ServiceDefaults;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -33,6 +34,29 @@ if (builder.Configuration.GetValue<bool>("Https:RedirectAtGateway"))
 
 app.UseRouting();
 app.UseRequestTimeouts();
+
+var apiDocumentationEnabled =
+    builder.Configuration.GetValue<bool>("ApiDocumentation:Enabled");
+
+var isApiDocumentationEnvironment =
+    app.Environment.IsDevelopment() ||
+    app.Environment.IsStaging();
+
+// Mở document cho env staging 
+if (apiDocumentationEnabled && isApiDocumentationEnvironment)
+{
+    app.MapScalarApiReference("/scalar", options =>
+    {
+        options.DefaultFonts = false;
+
+        options.WithOpenApiRoutePattern("/openapi/{documentName}/v1.json");
+
+        options
+            .AddDocument("catalog", "Catalog API", "/openapi/catalog/v1.json", isDefault: true)
+            .AddDocument("seat", "Seat API","/openapi/seat/v1.json")
+            .AddDocument("booking","Booking API","/openapi/booking/v1.json");
+    });
+}
 
 // app.MapReverseProxy();
 // Route timeout metadata requires UseRequestTimeouts() to run after routing

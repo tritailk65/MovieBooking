@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-CATALOG_URL="${CATALOG_URL:-http://localhost:8081}"
-SEAT_URL="${SEAT_URL:-http://localhost:8082}"
-BOOKING_URL="${BOOKING_URL:-http://localhost:8083}"
+CATALOG_URL="${CATALOG_URL:-http://localhost:8080}"
+SEAT_URL="${SEAT_URL:-http://localhost:8080}"
+BOOKING_URL="${BOOKING_URL:-http://localhost:8080}"
+
+
 SEAT_MAP_TIMEOUT_SECONDS="${SEAT_MAP_TIMEOUT_SECONDS:-30}"
 PAYMENT_TIMEOUT_SECONDS="${PAYMENT_TIMEOUT_SECONDS:-45}"
 SMOKE_USER_ID="${SMOKE_USER_ID:-smoke-user-$(date +%s)}"

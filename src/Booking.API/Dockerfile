@@ -12,6 +12,7 @@ COPY src/EventBusRabbitMq/EventBusRabbitMq.csproj src/EventBusRabbitMq/
 COPY src/IntergrationEventLogEF/IntergrationEventLogEF.csproj src/IntergrationEventLogEF/
 COPY src/ServiceDefaults/ServiceDefaults.csproj src/ServiceDefaults/
 COPY src/Seat.API/Seat.API.csproj src/Seat.API/
+COPY src/SagaOrchestration/SagaOrchestration.csproj src/SagaOrchestration/
 
 RUN dotnet restore src/Booking.API/Booking.API.csproj
 

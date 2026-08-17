@@ -427,3 +427,7 @@ FodyWeavers.xsd
 *.msp
 /Notes
 /tests/Notes
+
+# Local k6 reports and exported summaries
+/tests/k6/results/*
+!/tests/k6/results/.gitkeep
