@@ -33,10 +33,6 @@ jobs:
       - name: Test Booking Domain
         run: dotnet test tests/Booking.Domain.UnitTests/Booking.Domain.UnitTests.csproj --configuration Release --no-build --logger trx
 
-      - name: Test Booking Saga Integration Test
-        run: docker compose -f tests/Booking.Saga.IntegrationTests/docker-compose.integration.yml -p moviebooking-integration up -d --workflow_dispatch
-        run: dotnet test tests/Booking.Saga.IntegrationTests/Booking.Saga.IntegrationTests.csproj --configuration Release --no-build --logger trx
-
       - name: Start Booking Saga dependencies
         run: docker compose -f tests/Booking.Saga.IntegrationTests/docker-compose.integration.yml -p moviebooking-integration up -d --wait --wait-timeout 60
 
