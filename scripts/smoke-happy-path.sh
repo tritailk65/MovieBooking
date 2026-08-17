@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-CATALOG_URL="${CATALOG_URL:-http://localhost:8080}"
-SEAT_URL="${SEAT_URL:-http://localhost:8080}"
-BOOKING_URL="${BOOKING_URL:-http://localhost:8080}"
+CATALOG_URL="${CATALOG_URL:-http://localhost:8081}"
+SEAT_URL="${SEAT_URL:-http://localhost:8082}"
+BOOKING_URL="${BOOKING_URL:-http://localhost:8083}"
 
 
 SEAT_MAP_TIMEOUT_SECONDS="${SEAT_MAP_TIMEOUT_SECONDS:-30}"
@@ -330,14 +330,14 @@ JSON
 request_json_allow_statuses \
   "Create booking from reservation" \
   "POST" \
-  "$BOOKING_URL/api/booking/from-reservation?api-version=1.0" \
+  "$BOOKING_URL/api/v1/booking/from-reservation" \
   "$CREATE_BOOKING_BODY" \
   "$CREATE_BOOKING_RESPONSE" \
   "200"
 
 request_get \
   "Get booking by user" \
-  "$BOOKING_URL/api/booking/$SMOKE_USER_ID?api-version=1.0" \
+  "$BOOKING_URL/api/v1/booking/$SMOKE_USER_ID" \
   "200" \
   "$GET_BOOKINGS_RESPONSE"
 
@@ -368,7 +368,7 @@ JSON
 request_json \
   "Set booking awaiting payment" \
   "PUT" \
-  "$BOOKING_URL/api/booking/payment?api-version=1.0" \
+  "$BOOKING_URL/api/v1/booking/payment" \
   "$PAYMENT_BODY" \
   "200" \
   "$PAYMENT_RESPONSE"

@@ -11,9 +11,9 @@ var postgres = builder.AddPostgres("postgres")
     .WithImageTag("latest")
     .WithPgAdmin(pgadmin => pgadmin
         .WithHttpEndpoint(port: 5050, targetPort: 80, name: "pgadmin", isProxied: false)
-        .WithLifetime(ContainerLifetime.Persistent)
-    )
-    .WithLifetime(ContainerLifetime.Persistent);
+        // .WithLifetime(ContainerLifetime.Persistent)
+    );
+    // .WithLifetime(ContainerLifetime.Persistent);
 
 var catalogDb = postgres.AddDatabase("catalogdb");
 var bookingDb = postgres.AddDatabase("bookingdb");
@@ -22,14 +22,14 @@ var sagaDb = postgres.AddDatabase("sagadb");
 var cache = builder.AddRedis("redis")
             .WithRedisInsight(insight => insight
                     .WithHttpsEndpoint(port: 5051, targetPort: 5540, name: "RedisInsight", isProxied :false)
-                    .WithLifetime(ContainerLifetime.Persistent)
-            )
-        .WithLifetime(ContainerLifetime.Persistent);
+                    // .WithLifetime(ContainerLifetime.Persistent)
+            );
+        // .WithLifetime(ContainerLifetime.Persistent);
 
 
-var rabbitMq = builder.AddRabbitMQ("eventbus")
+var rabbitMq = builder.AddRabbitMQ("eventbus");
     // .WithManagementPlugin()  // UI for test
-    .WithLifetime(ContainerLifetime.Persistent);
+    // .WithLifetime(ContainerLifetime.Persistent);
 
 
 

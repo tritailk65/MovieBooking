@@ -14,7 +14,7 @@ services:
       retries: 20
 
   redis-test:
-    image: redis:7-alpine
+    image: redis:8.6
     command:
       - redis-server
       - --save

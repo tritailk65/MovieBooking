@@ -7,7 +7,7 @@ public static class BookingApi
 
     public static RouteGroupBuilder MapBookingApiV1(this IEndpointRouteBuilder app)
     {
-        var api = app.MapGroup("api/booking").HasApiVersion(1.0);
+        var api = app.MapGroup("api/v1/booking").WithTags("Booking API");
 
         api.MapPost("/from-reservation", CreateBookingAsync);//.RequireAuthorization(PermissionPolicies.Require("booking.write"));
         api.MapPost("/draft", CreateBookingDraftAsync)
@@ -131,7 +131,7 @@ public static class BookingApi
 
             // return TypedResults.Ok($"CreateBookingCommand succeeded - RequestId: {requestId}");
             return TypedResults.Created(
-                $"/api/booking/{bookingId.Value}",
+                $"/api/vi/booking/{bookingId.Value}",
                 new CreateBookingResponse(
                     bookingId.Value,
                     request.reservationId,

@@ -431,3 +431,4 @@ FodyWeavers.xsd
 # Local k6 reports and exported summaries
 /tests/k6/results/*
 !/tests/k6/results/.gitkeep
+.DS_Store

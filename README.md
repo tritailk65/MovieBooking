@@ -20,6 +20,8 @@ Trust the local HTTPS development certificate once:
 dotnet dev-certs https --check --trust
 ```
 
+Note **HTTPS certificate macOS:** If trust issues persist, reset it with `dotnet dev-certs https --clean`, then run `dotnet dev-certs https --trust` again and restart your browser or IDE.
+
 Start the Aspire AppHost with its HTTPS launch profile:
 
 ```shell
@@ -83,6 +85,24 @@ chmod +x scripts/smoke-test.sh
 ./scripts/smoke-test.sh
 ```
 
+### Run with a local k6 installation
+
+Gateway-only deployment smoke:
+
+```shell
+k6 run \
+  -e GATEWAY_URL=http://localhost:8080 \
+  tests/k6/scenarios/gateway-smoke.js
+```
+
+Booking happy-path smoke:
+
+```shell
+k6 run \
+  -e GATEWAY_URL=http://localhost:8080 \
+  -e VERBOSE=true \
+  tests/k6/scenarios/smoke.js
+```
 
 ### Integration-test dependencies
 

@@ -19,9 +19,9 @@ app.UseDefaultProblemDetails();
 
 app.MapDefaultEndpoints();
 
-var booking = app.NewVersionedApi("Booking");
+// var booking = app.NewVersionedApi("Booking");
 
-booking.MapBookingApiV1();
+app.MapBookingApiV1();
 
 // app.UseAuthentication();
 // app.UseAuthorization();
