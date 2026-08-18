@@ -12,6 +12,8 @@ public class CreateMovieCommandHandler : IRequestHandler<CreateMovieCommand, int
 
     public async Task<int> Handle(CreateMovieCommand request, CancellationToken cancellationToken)
     {
+
+
         // 1. Map the CreateMovieCommand to a Movie entity
         var movie = new Movie
         {
@@ -29,6 +31,13 @@ public class CreateMovieCommandHandler : IRequestHandler<CreateMovieCommand, int
         };
         _context.Movies.Add(movie);
         await _context.SaveChangesAsync(cancellationToken);
+
+        using var activity = ActivityExtensions.ActivitySource.StartActivity("catalog.movie.create");
+        var orderId = Guid.NewGuid();
+        activity?.SetTag("movie.Id", movie.Id);
+        activity?.SetTag("movie.Title", movie.Title);
+        activity?.SetTag("movie.Description", request.Description);
+
         return movie.Id;
     }
 }

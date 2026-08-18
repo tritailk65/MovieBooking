@@ -50,7 +50,7 @@ public class ValidateOrAddBuyerDomainEventHandler : INotificationHandler<Booking
                     .ToArray(),
                 TotalPrice: domainEvent.booking.GetTotal(),
                 ReservationVersion: domainEvent.booking.ReservationVersion,
-                PreparedUntil: DateTime.Now.AddMinutes(10));
+                PreparedUntil: DateTime.UtcNow.AddMinutes(10));
 
         await _integrationEvent.AddAndSaveEventAsync(integrationEvent);
         BookingApiTrace.LogBookingBuyerAndPaymentValidatedOrUpdated(_logger, buyer.Id, domainEvent.booking.Id);

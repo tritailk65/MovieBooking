@@ -13,9 +13,21 @@ public class IntegrationEventLogService<TContext> : IIntegrationEventLogService,
     public IntegrationEventLogService(TContext context)
     {
         _context = context;
-        _eventTypes = Assembly.Load(Assembly.GetEntryAssembly().FullName)
-            .GetTypes()
-            .Where(t => t.Name.EndsWith(nameof(IntegrationEvent)))
+        var entryAssembly = Assembly.GetEntryAssembly() ?? throw new InvalidOperationException("Entry assembly could not be determined.");
+        // _eventTypes = Assembly.Load(Assembly.GetEntryAssembly().FullName)
+        //     .GetTypes()
+        //     .Where(t => t.Name.EndsWith(nameof(IntegrationEvent)))
+        //     .ToArray();
+
+        _eventTypes = entryAssembly
+            .GetReferencedAssemblies()
+            .Select(Assembly.Load)
+            .Append(entryAssembly)
+            .SelectMany(assembly => assembly.GetTypes())
+            .Where(type =>
+                typeof(IntegrationEvent).IsAssignableFrom(type) &&
+                !type.IsAbstract &&
+                !type.IsInterface)
             .ToArray();
     }
 
@@ -31,13 +43,33 @@ public class IntegrationEventLogService<TContext> : IIntegrationEventLogService,
             .Where(e => e.TransactionId == transactionId && e.State == EventStateEnum.NotPublished)
             .ToListAsync();
          
-        if (result.Count != 0)
+        // if (result.Count != 0)
+        // {
+        //     return result.OrderBy(o => o.CreationTime)
+        //         .Select(e => e.DeserializeJsonContent(_eventTypes.FirstOrDefault(t => t.Name == e.EventTypeShortName)));
+        // }
+
+        // return [];
+
+        if (result.Count == 0)
         {
-            return result.OrderBy(o => o.CreationTime)
-                .Select(e => e.DeserializeJsonContent(_eventTypes.FirstOrDefault(t => t.Name == e.EventTypeShortName)));
+            return [];
         }
 
-        return [];
+        return result
+            .OrderBy(entry => entry.CreationTime)
+            .Select(entry =>
+            {
+                var eventType = _eventTypes.SingleOrDefault(type => type.FullName == entry.EventTypeName);
+
+                if (eventType is null)
+                {
+                    throw new InvalidOperationException( $"Integration event type '{entry.EventTypeName}' " + "could not be resolved.");
+                }
+
+                return entry.DeserializeJsonContent(eventType);
+            })
+            .ToArray();
     }
 
     

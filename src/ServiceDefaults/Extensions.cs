@@ -1,21 +1,26 @@
-﻿using Microsoft.AspNetCore.Builder;
+﻿using System;
+using System.Collections.Generic;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Routing;
+using Microsoft.AspNetCore.StaticFiles.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+
 
 namespace ServiceDefaults
 {
     public static partial class Extensions
     {
-        public static IHostApplicationBuilder AddServiceDefaults(this IHostApplicationBuilder builder)
+        public static IHostApplicationBuilder AddServiceDefaults(this IHostApplicationBuilder builder, string serviceName)
         {
-            builder.AddBasicServiceDefaults();
+            builder.AddBasicServiceDefaults(serviceName);
 
             builder.Services.AddServiceDiscovery();
 
@@ -37,18 +42,18 @@ namespace ServiceDefaults
         /// <remarks>
         /// Hàm này bỏ cấu hình http client để dành cho các service không cần polly như background worker, consumer,...
         /// </remarks>
-        public static IHostApplicationBuilder AddBasicServiceDefaults(this IHostApplicationBuilder builder)
+        public static IHostApplicationBuilder AddBasicServiceDefaults(this IHostApplicationBuilder builder, string serviceName)
         {
             // Default health checks assume the event bus and self health checks
             builder.AddDefaultHealthChecks();
 
             //open telementry
-            builder.ConfigureOpenTelemetry();
+            builder.ConfigureOpenTelemetry(serviceName);
 
             return builder;
         }
 
-        public static IHostApplicationBuilder ConfigureOpenTelemetry (this IHostApplicationBuilder builder)
+        public static IHostApplicationBuilder ConfigureOpenTelemetry (this IHostApplicationBuilder builder, string serviceName)
         {
 
             // OpenTelementry configuration
@@ -56,16 +61,28 @@ namespace ServiceDefaults
             {
                 logging.IncludeFormattedMessage = true;
                 logging.IncludeScopes = true;
+                logging.ParseStateValues = true;
             });
 
             
             builder.Services.AddOpenTelemetry()
+                .ConfigureResource(resource => resource
+                .AddService(
+                    serviceName: serviceName,
+                    serviceNamespace: "OpenTelemetryLab",
+                    serviceVersion: "1.0.0",
+                    serviceInstanceId: Environment.MachineName)
+                .AddAttributes(
+                [
+                    new KeyValuePair<string, object>("deployment.environment.name", builder.Environment.EnvironmentName)
+                ]))
                 .WithMetrics(metrics =>
                 {
                     //  request, ram, cpu,.. infomation
                     metrics.AddAspNetCoreInstrumentation()
                             .AddHttpClientInstrumentation()
                             .AddRuntimeInstrumentation()
+                            .AddMeter(ActivityExtensions.MeterName)
                             .AddMeter("Experimental.Microsoft.Extensions.AI");
                 })
                 .WithTracing(tracing =>
@@ -78,9 +95,12 @@ namespace ServiceDefaults
                         tracing.SetSampler(new AlwaysOnSampler());
                     }
 
+                    // TODO: Add masstransit ActivitySource
                     tracing.AddAspNetCoreInstrumentation()
                         .AddGrpcClientInstrumentation()
                         .AddHttpClientInstrumentation()
+                        .AddSource(ActivityExtensions.ActivitySourceName)
+                        // .AddSource(DiagnosticHeaders.DefaultListenerName)
                         .AddSource("Experimental.Microsoft.Extensions.AI");
                 });
 

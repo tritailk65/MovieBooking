@@ -1,7 +1,5 @@
 ﻿using IntegrationEventLogEF.Services;
 using MassTransit;
-using Microsoft.AspNetCore.Authorization;
-using ServiceDefaults.Authorization;
 
 namespace Catalog.API.Extensions
 {

@@ -3,7 +3,7 @@ using ServiceDefaults;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.AddBasicServiceDefaults();
+builder.AddBasicServiceDefaults("seat-service");
 builder.AddApplicationServices();
 // builder.Services.AddProblemDetails();
 builder.AddDefaultProblemDetails();

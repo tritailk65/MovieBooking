@@ -84,13 +84,23 @@ public class ReserveSeatCommandHandler : IRequestHandler<ReserveSeatApplicationC
             foreach (var seatId in seatIds)
             {
                 var canConfirm = await CanReserveSeatAsync(request.ShowtimeId, request.UserId, seatId);
-                if (!canConfirm) return null;
+                if (!canConfirm)
+                {
+                    return new ReserveSeatsResult(
+                        false,
+                        $"Seat {seatId} cannot be reserved");
+                }
             }
 
             foreach (var seatId in seatIds)
             {
-                var seatConfirmed = await ReserveSeatAsync(request.ShowtimeId, request.UserId, seatId);
-                if (!seatConfirmed) return null;
+                var seatReserved = await ReserveSeatAsync(request.ShowtimeId, request.UserId, seatId);
+                if (!seatReserved)
+                {
+                    return new ReserveSeatsResult(
+                        false,
+                        $"Seat {seatId} could not be reserved");
+                }
             }
 
             _logger.LogInformation("Reserved seat {reservationId} for showtime {showtimeId} and user {userId}",

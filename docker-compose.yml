@@ -18,7 +18,7 @@ services:
       retries: 10
 
   redis:
-    image: redis:7
+    image: redis:8.6
     container_name: moviebooking-redis
     ports:
       - "6379:6379"
@@ -29,16 +29,70 @@ services:
       retries: 10
 
   rabbitmq:
-    image: rabbitmq:3-management
+    image: rabbitmq:4.2
     container_name: moviebooking-rabbitmq
     ports:
       - "5672:5672"
-      - "15672:15672"
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "check_port_connectivity"]
       interval: 10s
       timeout: 5s
       retries: 10
+  
+  jaeger:
+    image: jaegertracing/jaeger:2.20.0
+    command: ["--config", "/etc/jaeger/jaeger-config.yaml"]
+    volumes:
+      - ./jaeger-config.yaml:/etc/jaeger/jaeger-config.yaml:ro
+    ports:
+      - "16686:16686"
+      - "13134:13133"
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.4.0
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      xpack.license.self_generated.type: basic
+      ES_JAVA_OPTS: -Xms512m -Xmx512m
+    ports:
+      - "9200:9200"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:9200/_cluster/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:9.4.0
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+      XPACK_SECURITY_ENABLED: "false"
+      SERVER_HOST: 0.0.0.0
+    ports:
+      - "5601:5601"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+
+  otel-collector:
+    image: docker.elastic.co/elastic-agent/elastic-agent:9.4.0
+    command: ["--config=/etc/otelcol/collector-config.yaml"]
+    environment:
+      ELASTIC_AGENT_OTEL: "true"
+    volumes:
+      - ./collector-config.yaml:/etc/otelcol/collector-config.yaml:ro
+    ports:
+      - "4317:4317"
+      - "4318:4318"
+      - "13133:13133"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      jaeger:
+        condition: service_started
 
   catalog-api:
     build:
@@ -51,6 +105,10 @@ services:
       ConnectionStrings__catalogdb: Host=postgres;Port=5432;Database=catalogdb;Username=postgres;Password=postgres
       ConnectionStrings__redis: redis:6379
       ConnectionStrings__eventbus: amqp://guest:guest@rabbitmq:5672
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+      OTEL_METRIC_EXPORT_INTERVAL: "10000"
+      OTEL_RESOURCE_ATTRIBUTES: service.namespace=MovieBooking,deployment.environment.name=MovieBooking
     ports:
       - "8081:8080"
     depends_on:
@@ -60,6 +118,8 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      otel-collector:
+        condition: service_started
 
   seat-api:
     platform: linux/amd64
@@ -76,6 +136,10 @@ services:
       Kestrel__Endpoints__Grpc__Protocols: Http2
       ConnectionStrings__redis: redis:6379
       ConnectionStrings__eventbus: amqp://guest:guest@rabbitmq:5672
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+      OTEL_METRIC_EXPORT_INTERVAL: "10000"
+      OTEL_RESOURCE_ATTRIBUTES: service.namespace=MovieBooking,deployment.environment.name=MovieBooking
     ports:
       - "8082:8080"
     expose:
@@ -85,6 +149,8 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      otel-collector:
+        condition: service_started
 
   booking-api:
     platform: linux/amd64
@@ -98,7 +164,11 @@ services:
       ConnectionStrings__bookingDb: Host=postgres;Port=5432;Database=bookingdb;Username=postgres;Password=postgres
       ConnectionStrings__sagadb: Host=postgres;Port=5432;Database=sagadb;Username=postgres;Password=postgres
       ConnectionStrings__eventbus: amqp://guest:guest@rabbitmq:5672
-      Grpc__SeatUrl: http://moviebooking-seat-api:8081
+      Grpc__SeatUrl: http://seat-api:8081
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+      OTEL_METRIC_EXPORT_INTERVAL: "10000"
+      OTEL_RESOURCE_ATTRIBUTES: service.namespace=MovieBooking,deployment.environment.name=MovieBooking
     ports:
       - "8083:8080"
     depends_on:
@@ -107,6 +177,8 @@ services:
       rabbitmq:
         condition: service_healthy
       seat-api:
+        condition: service_started
+      otel-collector:
         condition: service_started
 
   payment-api:
@@ -119,11 +191,17 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__EventBus: amqp://guest:guest@rabbitmq:5672
       PaymentOptions__PaymentSucceeded: "true"
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+      OTEL_METRIC_EXPORT_INTERVAL: "10000"
+      OTEL_RESOURCE_ATTRIBUTES: service.namespace=MovieBooking,deployment.environment.name=MovieBooking
     ports:
       - "8084:8080"
     depends_on:
       rabbitmq:
         condition: service_healthy
+      otel-collector:
+        condition: service_started
 
   gateway-api:
     build:
@@ -145,6 +223,10 @@ services:
       ReverseProxy__Clusters__catalog__Destinations__catalog-api__Address: http://catalog-api:8080
       ReverseProxy__Clusters__seat__Destinations__seat-api__Address: http://seat-api:8080
       ReverseProxy__Clusters__booking__Destinations__booking-api__Address: http://booking-api:8080
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4317
+      OTEL_EXPORTER_OTLP_PROTOCOL: grpc
+      OTEL_METRIC_EXPORT_INTERVAL: "10000"
+      OTEL_RESOURCE_ATTRIBUTES: service.namespace=MovieBooking,deployment.environment.name=MovieBooking
     ports:
       - "8080:8080"
     depends_on:
@@ -154,6 +236,9 @@ services:
         condition: service_started
       booking-api:
         condition: service_started
+      otel-collector:
+        condition: service_started
 
 volumes:
+  elasticsearch-data:
   postgres-data:

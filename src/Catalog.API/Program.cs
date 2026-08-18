@@ -2,9 +2,9 @@
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.AddServiceDefaults();
+builder.AddServiceDefaults("catalog-service");
 builder.AddApplicationServices();
-// builder.Services.AddProblemDetails();
+builder.Services.AddProblemDetails();
 builder.AddDefaultProblemDetails();
 
 var withApiVersioning = builder.Services.AddApiVersioning(options =>

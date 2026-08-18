@@ -1,7 +1,7 @@
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.AddServiceDefaults();
+builder.AddServiceDefaults("booking-service");
 builder.AddApplicationServices();
 // builder.Services.AddProblemDetails();
 builder.AddDefaultProblemDetails();
@@ -19,9 +19,9 @@ app.UseDefaultProblemDetails();
 
 app.MapDefaultEndpoints();
 
-var booking = app.NewVersionedApi("Booking");
+// var booking = app.NewVersionedApi("Booking");
 
-booking.MapBookingApiV1();
+app.MapBookingApiV1();
 
 // app.UseAuthentication();
 // app.UseAuthorization();

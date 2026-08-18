@@ -132,8 +132,17 @@ public static class Extensions
                 // HTTP/2 for gRPC while still accepting HTTP/1.1 REST and health calls.
                 // Docker Compose continues to override Grpc:SeatUrl with its dedicated
                 // clear-text HTTP/2 endpoint on port 8081.
-                var seatUrl = builder.Configuration["Grpc:SeatUrl"] ?? "https+http://seat-api";
-                options.Address = new Uri(seatUrl);
+
+                var seatUrl = builder.Configuration["Grpc:SeatUrl"];
+
+                if (!Uri.TryCreate(seatUrl, UriKind.Absolute, out var seatUri) ||
+                    (seatUri.Scheme != Uri.UriSchemeHttp &&
+                    seatUri.Scheme != Uri.UriSchemeHttps))
+                {
+                    throw new InvalidOperationException(
+                        "Grpc:SeatUrl must be a valid HTTP or HTTPS URL.");
+                }
+                options.Address = seatUri;
             });
             // .AddServiceDiscovery();
             //.AddHttpMessageHandler<SeatServiceAuthorizationHandler>();

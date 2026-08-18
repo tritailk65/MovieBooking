@@ -20,13 +20,13 @@ Trust the local HTTPS development certificate once:
 dotnet dev-certs https --check --trust
 ```
 
+Note **HTTPS certificate macOS:** If trust issues persist, reset it with `dotnet dev-certs https --clean`, then run `dotnet dev-certs https --trust` again and restart your browser or IDE.
+
 Start the Aspire AppHost with its HTTPS launch profile:
 
 ```shell
 dotnet run --project src/AppHost/AppHost.csproj --launch-profile https
 ```
-
-The Aspire dashboard displays the external URL assigned to `gateway-api`.
 
 ### Development with Docker Compose
 
@@ -49,20 +49,6 @@ Stop the local stack without deleting its named volumes:
 docker compose down
 ```
 
-### Build Docker images manually
-
-Docker images are published with the .NET `Release` configuration. The ASP.NET Core
-environment (`Development`, `Staging`, or `Production`) is selected when the
-container starts, not while the image is built.
-
-```shell
-docker build -t moviebooking-catalog:local-staging -f src/Catalog.API/Dockerfile .
-docker build -t moviebooking-seat:local-staging -f src/Seat.API/Dockerfile .
-docker build -t moviebooking-booking:local-staging -f src/Booking.API/Dockerfile .
-docker build -t moviebooking-payment:local-staging -f src/Payment.API/Dockerfile .
-docker build -t moviebooking-gateway:local-staging -f src/Gateway.API/Dockerfile .
-```
-
 ## Testing
 
 ### Build and unit tests
@@ -73,17 +59,6 @@ dotnet build --no-restore
 dotnet test --no-build
 ```
 
-### Local Docker smoke tests
-
-Start the Development Compose stack before running the tests. Keep the curl
-script for a lightweight deployment check:
-
-```shell
-chmod +x scripts/smoke-test.sh
-./scripts/smoke-test.sh
-```
-
-
 ### Integration-test dependencies
 
 Start the isolated PostgreSQL, Redis, and RabbitMQ test dependencies:
@@ -93,3 +68,28 @@ docker compose -f tests/Booking.Saga.IntegrationTests/docker-compose.integration
 dotnet test tests/Booking.Saga.IntegrationTests/Booking.Saga.IntegrationTests.csproj
 docker compose -f tests/Booking.Saga.IntegrationTests/docker-compose.integration.yml -p moviebooking-integration down -v
 ```
+
+### Local Docker smoke tests
+
+Start the Development Compose stack before running the tests
+
+```shell
+chmod +x scripts/smoke-test.sh
+./scripts/smoke-test.sh
+```
+
+### Run with a local k6 installation
+
+Gateway-only deployment smoke:
+
+```shell
+k6 run -e GATEWAY_URL=http://localhost:8080/  tests/k6/scenarios/gateway-smoke.js
+```
+
+Booking happy-path smoke:
+
+```shell
+k6 run -e GATEWAY_URL=http://localhost:8080/ -e CATALOG_ADMIN_URL=http://localhost:8081/ -e VERBOSE=true tests/k6/scenarios/smoke.js
+```
+
+

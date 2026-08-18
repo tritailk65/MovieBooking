@@ -1,7 +1,14 @@
 ﻿using System.Diagnostics;
+using System.Diagnostics.Metrics;
 
 internal static class ActivityExtensions
 {
+    public const string ActivitySourceName = "OpenTelemetryLab";
+    public const string MeterName = "OpenTelemetryLab";
+    public static readonly ActivitySource ActivitySource = new(ActivitySourceName, "1.0.0");
+    public static readonly Meter Meter = new(MeterName, "1.0.0");
+
+
     // See https://opentelemetry.io/docs/specs/otel/trace/semantic_conventions/exceptions/
     public static void SetExceptionTags(this Activity activity, Exception ex)
     {
@@ -15,4 +22,5 @@ internal static class ActivityExtensions
         activity.AddTag("exception.type", ex.GetType().FullName);
         activity.SetStatus(ActivityStatusCode.Error);
     }
+
 }
