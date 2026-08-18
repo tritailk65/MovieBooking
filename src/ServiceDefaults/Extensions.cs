@@ -13,6 +13,7 @@ using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 
+
 namespace ServiceDefaults
 {
     public static partial class Extensions
@@ -94,10 +95,12 @@ namespace ServiceDefaults
                         tracing.SetSampler(new AlwaysOnSampler());
                     }
 
+                    // TODO: Add masstransit ActivitySource
                     tracing.AddAspNetCoreInstrumentation()
                         .AddGrpcClientInstrumentation()
                         .AddHttpClientInstrumentation()
                         .AddSource(ActivityExtensions.ActivitySourceName)
+                        // .AddSource(DiagnosticHeaders.DefaultListenerName)
                         .AddSource("Experimental.Microsoft.Extensions.AI");
                 });
 

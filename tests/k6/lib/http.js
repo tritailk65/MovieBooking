@@ -3,8 +3,10 @@ import { environment } from '../config/environment.js';
 import { expectStatus, parseJson } from './checks.js';
 
 function requestParameters(service, operation, phase, extraParameters = {}) {
-  const correlationId =
-    `k6-${environment.testRunId}-${operation}-${__VU}-${__ITER}`;
+  // const correlationId =
+  //   `k6-${environment.testRunId}-${operation}-${__VU}-${__ITER}`;
+
+  const correlationId = `k6-${environment.testRunId}-${__VU}-${__ITER}`;
 
   return {
     timeout: environment.requestTimeout,

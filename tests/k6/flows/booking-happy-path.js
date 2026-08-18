@@ -1,4 +1,4 @@
-import { group } from 'k6';
+import { check, fail, group } from 'k6';
 import { environment } from '../config/environment.js';
 import { createShowtime } from '../api/catalog-api.js';
 import {
@@ -12,6 +12,8 @@ import {
   getBookingForPolling,
   getBookingsByUser,
   setBookingAwaitingPayment,
+  getBookingSagaForPolling,
+  getBookingById
 } from '../api/booking-api.js';
 import {
   requireValue,
@@ -48,16 +50,18 @@ function describeHttpResponse(response) {
   return `HTTP ${response.status}: ${preview || '<empty body>'}`;
 }
 
-function bookingCollection(responseBody) {
-  if (Array.isArray(responseBody)) {
-    return responseBody;
+function requireEqual(actual, expected, message) {
+  const passed = check(actual, {
+    [message]: (value) => value === expected,
+  });
+
+  if (!passed) {
+    fail(
+      `${message}. Expected: ${expected}. Actual: ${actual}`,
+    );
   }
 
-  if (responseBody && Array.isArray(responseBody.items)) {
-    return responseBody.items;
-  }
-
-  return [];
+  return actual;
 }
 
 export function bookingHappyPath() {
@@ -105,10 +109,6 @@ export function bookingHappyPath() {
       userId: identity.userId,
     });
 
-    // The old shell script called the internal validation endpoint with an
-    // empty reservation id to discover the generated id. The public Gateway
-    // already exposes this read endpoint, while Booking validates the same
-    // reservation over gRPC when creating the booking.
     const reservation = getSeatReservation({
       showtimeId,
       userId: identity.userId,
@@ -121,33 +121,100 @@ export function bookingHappyPath() {
   });
 
   group('04 - Create and verify booking', () => {
-    const createResponse = createBookingFromReservation({
+    const createdBooking = createBookingFromReservation({
       showtimeId,
       userId: identity.userId,
       userName: identity.userName,
       reservationId,
     });
 
-    const createdBooking = tryParseJson(createResponse);
-    const createdBookingId = createdBooking && createdBooking.bookingId;
-    const bookings = bookingCollection(
-      getBookingsByUser(identity.userId),
-    );
-    const booking = bookings.find(
-      (candidate) => candidate.id === createdBookingId,
-    ) || bookings[0];
-
     bookingId = requireValue(
-      createdBookingId || (booking && booking.id),
-      'Booking response contains booking id',
+      createdBooking && createdBooking.bookingId,
+      'Create booking response contains bookingId',
     );
-    requireValue(
-      booking && booking.bookingStatus,
+
+    const createdReservationId = requireValue(
+      createdBooking && createdBooking.reservationId,
+      'Create booking response contains reservationId',
+    );
+
+    const creationStatus = requireValue(
+      createdBooking && createdBooking.status,
+      'Create booking response contains status',
+    );
+
+    requireEqual(
+      String(createdReservationId).toLowerCase(),
+      String(reservationId).toLowerCase(),
+      'Created booking belongs to the requested reservation',
+    );
+
+    requireEqual(
+      creationStatus.toLowerCase(),
+      'submitted',
+      'Create booking response has Submitted status',
+    );
+
+    const booking = getBookingById(bookingId);
+
+    requireEqual(
+      booking.id,
+      bookingId,
+      'Loaded booking has the expected booking id',
+    );
+
+    requireEqual(
+      booking.userId,
+      identity.userId,
+      `Booking ${bookingId} belongs to the expected user`,
+    );
+
+    requireEqual(
+      booking.showtimeId,
+      showtimeId,
+      `Booking ${bookingId} belongs to the expected showtime`,
+    );
+
+    const bookingStatus = requireValue(
+      booking.bookingStatus,
       `Booking ${bookingId} contains bookingStatus`,
+    );
+
+    requireEqual(
+      bookingStatus.toLowerCase(),
+      'submitted',
+      `Booking ${bookingId} is initially Submitted`,
     );
   });
 
-  group('05 - Start payment and wait for paid status', () => {
+  group('05 - Wait for saga PendingPayment', () => {
+    pollUntil({
+      name:
+        `Booking saga ${reservationId} reaches PendingPayment`,
+      timeoutSeconds: environment.paymentTimeoutSeconds,
+      intervalSeconds: environment.pollingIntervalSeconds,
+      request: () =>
+        getBookingSagaForPolling(reservationId),
+      predicate: (response) => {
+        if (!response || response.status !== 200) {
+          return false;
+        }
+
+        const saga = tryParseJson(response);
+
+        return Boolean(
+          saga &&
+            saga.bookingId === bookingId &&
+            saga.currentState &&
+            saga.currentState.toLowerCase() ===
+              'pendingpayment',
+        );
+      },
+      describeLastResult: describeHttpResponse,
+    });
+  });
+
+  group('06 - Start payment and wait for paid status', () => {
     setBookingAwaitingPayment(bookingId);
 
     pollUntil({
@@ -171,6 +238,19 @@ export function bookingHappyPath() {
     });
   });
 
+  group('07 - Wait for saga finalization', () => {
+    pollUntil({
+      name: `Booking saga ${reservationId} is finalized`,
+      timeoutSeconds: environment.paymentTimeoutSeconds,
+      intervalSeconds: environment.pollingIntervalSeconds,
+      request: () =>
+        getBookingSagaForPolling(reservationId),
+      predicate: (response) =>
+        Boolean(response && response.status === 404),
+      describeLastResult: describeHttpResponse,
+    });
+  });
+
   if (environment.verbose) {
     console.log(
       `Happy path passed: user=${identity.userId}, ` +
@@ -187,3 +267,4 @@ export function bookingHappyPath() {
     bookingId,
   };
 }
+

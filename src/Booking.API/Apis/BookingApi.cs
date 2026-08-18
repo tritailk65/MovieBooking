@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using SagaOrchestration;
 using ServiceDefaults.Authorization;
 
 namespace BookingService.API;
@@ -25,7 +26,8 @@ public static class BookingApi
 
         // // Get booking by id
         api.MapGet("/{bookingid:int}", GetBookingAsync);//.RequireAuthorization(PermissionPolicies.Require("booking.read"));
-
+  
+        api.MapGet("/saga/{reservationId:guid}", GetBookingSagaAsync);
         return api;
     }
 
@@ -89,6 +91,7 @@ public static class BookingApi
         using var activity = ActivityExtensions.ActivitySource.StartActivity("booking.create.from_reservation");
         activity?.SetTag("booking.reservation.id", request.reservationId);
         activity?.SetTag("booking.showtime.id", request.showtimeId);
+
         try
         {
 
@@ -201,6 +204,27 @@ public static class BookingApi
         }
         return TypedResults.Ok(booking);
     }
+
+    public static async Task<Results<Ok<BookingSagaStatusResponse>, NotFound>> GetBookingSagaAsync(
+        Guid reservationId,
+        BookingSagaContext sagaContext,
+        CancellationToken cancellationToken)
+    {
+        var saga = await sagaContext.Set<BookingSaga>().AsNoTracking()
+                .Where(current =>
+                        current.ReservationId == reservationId)
+                .Select(current => new BookingSagaStatusResponse(
+                    current.ReservationId,
+                    current.BookingId,
+                    current.CurrentState,
+                    current.FailureReason,
+                    current.CreatedAt,
+                    current.UpdatedAt,
+                    current.CompletedAt))
+                .SingleOrDefaultAsync(cancellationToken);
+
+        return saga is null ? TypedResults.NotFound() : TypedResults.Ok(saga);
+    }
     
 }
 
@@ -227,3 +251,13 @@ public sealed record CreateBookingResponse(
     Guid ReservationId,
     Guid RequestId,
     string Status);
+
+
+public sealed record BookingSagaStatusResponse(
+    Guid ReservationId,
+    int BookingId,
+    string CurrentState,
+    string? FailureReason,
+    DateTime CreatedAt,
+    DateTime? UpdatedAt,
+    DateTime? CompletedAt);
