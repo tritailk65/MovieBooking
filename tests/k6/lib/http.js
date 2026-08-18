@@ -3,11 +3,15 @@ import { environment } from '../config/environment.js';
 import { expectStatus, parseJson } from './checks.js';
 
 function requestParameters(service, operation, phase, extraParameters = {}) {
+  const correlationId =
+    `k6-${environment.testRunId}-${operation}-${__VU}-${__ITER}`;
+
   return {
     timeout: environment.requestTimeout,
     headers: {
       Accept: 'application/json',
       'Content-Type': 'application/json',
+      'X-Correlation-Id': correlationId,
       ...(extraParameters.headers || {}),
     },
     tags: {

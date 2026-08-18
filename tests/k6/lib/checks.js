@@ -20,8 +20,11 @@ export function expectStatus(response, expectedStatuses, operation) {
   });
 
   if (!passed) {
+    const correlationId = response.headers['X-Correlation-Id'];
+        
     fail(
       `${operation} returned HTTP ${response.status}. ` +
+        `CorrelationId: ${correlationId}. ` +
         `Response: ${responsePreview(response)}`,
     );
   }

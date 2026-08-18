@@ -1,7 +1,7 @@
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.AddServiceDefaults();
+builder.AddServiceDefaults("booking-service");
 builder.AddApplicationServices();
 // builder.Services.AddProblemDetails();
 builder.AddDefaultProblemDetails();

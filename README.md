@@ -51,19 +51,6 @@ Stop the local stack without deleting its named volumes:
 docker compose down
 ```
 
-### Build Docker images manually
-
-Docker images are published with the .NET `Release` configuration. The ASP.NET Core
-environment (`Development`, `Staging`, or `Production`) is selected when the
-container starts, not while the image is built.
-
-```shell
-docker build -t moviebooking-catalog:local-staging -f src/Catalog.API/Dockerfile .
-docker build -t moviebooking-seat:local-staging -f src/Seat.API/Dockerfile .
-docker build -t moviebooking-booking:local-staging -f src/Booking.API/Dockerfile .
-docker build -t moviebooking-payment:local-staging -f src/Payment.API/Dockerfile .
-docker build -t moviebooking-gateway:local-staging -f src/Gateway.API/Dockerfile .
-```
 
 ## Testing
 
@@ -90,18 +77,13 @@ chmod +x scripts/smoke-test.sh
 Gateway-only deployment smoke:
 
 ```shell
-k6 run \
-  -e GATEWAY_URL=http://localhost:8080 \
-  tests/k6/scenarios/gateway-smoke.js
+k6 run -e GATEWAY_URL=https://localhost:7180/  tests/k6/scenarios/gateway-smoke.js
 ```
 
 Booking happy-path smoke:
 
 ```shell
-k6 run \
-  -e GATEWAY_URL=http://localhost:8080 \
-  -e VERBOSE=true \
-  tests/k6/scenarios/smoke.js
+k6 run -e GATEWAY_URL=https://localhost:7180/ -e CATALOG_ADMIN_URL=https://localhost:60204/ -e VERBOSE=true tests/k6/scenarios/smoke.js
 ```
 
 ### Integration-test dependencies

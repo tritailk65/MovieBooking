@@ -3,7 +3,7 @@ using PaymentService.Api.IntegrationEvents.Consumers;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.AddServiceDefaults();
+builder.AddServiceDefaults("payment-service");
 
 // builder.AddRabbitMqEventBus("EventBus")
 //     .AddSubscription<BookingStatusChangedToAwaitingPaymentIntegrationEvent, BookingStatusChangedToAwaitingPaymentIntegrationEventHandler>();

@@ -64,7 +64,7 @@ export function setBookingAwaitingPayment(bookingId) {
 export function getBookingForPolling(bookingId) {
   return getForPolling({
     url:
-      `${environment.gatewayUrl}/apiv1/booking/${bookingId}` ,
+      `${environment.gatewayUrl}/api/v1/booking/${bookingId}` ,
       // apiVersionQuery(),
     service: 'booking',
     operation: 'wait_for_paid_booking',

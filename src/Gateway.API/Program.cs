@@ -4,7 +4,7 @@ using ServiceDefaults;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.AddServiceDefaults();
+builder.AddServiceDefaults("gateway-api");
 builder.AddDefaultProblemDetails();
 builder.AddGatewayTransportSecurity();
 builder.Services.AddRequestTimeouts();

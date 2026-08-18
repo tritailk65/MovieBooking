@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using ServiceDefaults.Authorization;
 
 namespace BookingService.API;
@@ -84,6 +85,13 @@ public static class BookingApi
         IMediator mediator,
         IBookingQueries bookingQueries)
     {
+
+        using var activity = ActivityExtensions.ActivitySource.StartActivity("booking.create.from_reservation");
+        activity?.SetTag("booking.reservation.id", request.reservationId);
+        activity?.SetTag("booking.showtime.id", request.showtimeId);
+        try
+        {
+
         // Gọi Seat Service để check data
         var validation = await seatClient.ValidationReservationAsync(new ValidationReservationRequest
         {
@@ -92,8 +100,14 @@ public static class BookingApi
             UserId = request.userId
         });
 
+        activity?.SetTag("seat.reservation.validation.success", validation.Success);
+        activity?.SetTag("booking.seat.count", validation.SeatIds.Count);
+
         if (!validation.Success)
         {
+            activity?.SetTag("booking.failure.reason", "reservation_invalid");
+            activity?.SetStatus(ActivityStatusCode.Error,"Seat reservation is invalid");
+
             return TypedResults.Problem(
                 statusCode: StatusCodes.Status400BadRequest,
                 title: "Seat reservation is invalid",
@@ -130,9 +144,7 @@ public static class BookingApi
 
 
             // return TypedResults.Ok($"CreateBookingCommand succeeded - RequestId: {requestId}");
-            return TypedResults.Created(
-                $"/api/vi/booking/{bookingId.Value}",
-                new CreateBookingResponse(
+            return TypedResults.Created($"/api/v1/booking/{bookingId.Value}", new CreateBookingResponse(
                     bookingId.Value,
                     request.reservationId,
                     requestId,
@@ -145,6 +157,15 @@ public static class BookingApi
                 title: "Booking could not be created",
                 detail: $"The booking request failed. RequestId: {requestId}");
         }
+        } 
+        catch (Exception ex)
+        {
+            activity?.SetExceptionTags(ex);
+            return TypedResults.Problem(
+                statusCode: StatusCodes.Status500InternalServerError,
+                detail: ex.ToString());
+        }
+        
     }
 
     public static async Task<Ok<IEnumerable<CardTypeVM>>> GetCardTypeAsync([AsParameters] BookingService bookingService)
